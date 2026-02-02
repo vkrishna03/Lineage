@@ -7,8 +7,27 @@ import (
 	"os/signal"
 	"syscall"
 
+	_ "github.com/lineage/api/docs" // Swagger docs
 	"github.com/lineage/api/internal/app"
 )
+
+// @title           Lineage API
+// @version         1.0
+// @description     Epistemic Transparency & Event Lineage System API
+// @description     An append-only event store with hash-chaining for AI decision tracking
+
+// @contact.name   Lineage Support
+// @contact.url    https://github.com/vkrishna03/Lineage
+
+// @license.name  Elastic License 2.0
+// @license.url   https://www.elastic.co/licensing/elastic-license
+
+// @host      localhost:8080
+// @BasePath  /api/v1
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())

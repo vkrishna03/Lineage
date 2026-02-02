@@ -21,10 +21,10 @@ func NewHandler(repo *Repository) *Handler {
 
 // CreateRequest represents the request body for creating an actor
 type CreateRequest struct {
-	Type       string          `json:"type" binding:"required"`
-	ExternalID *string         `json:"external_id"`
-	Name       *string         `json:"name"`
-	Metadata   json.RawMessage `json:"metadata"`
+	Type       string          `json:"type" binding:"required" example:"llm" enums:"human,llm,agent,service,tool"`
+	ExternalID *string         `json:"external_id" example:"claude-opus-4"`
+	Name       *string         `json:"name" example:"Claude"`
+	Metadata   json.RawMessage `json:"metadata" swaggertype:"object"`
 }
 
 var validTypes = map[string]bool{
@@ -36,6 +36,16 @@ var validTypes = map[string]bool{
 }
 
 // Create handles POST /actors
+// @Summary      Create an actor
+// @Description  Create a new actor (human, llm, agent, service, or tool)
+// @Tags         actors
+// @Accept       json
+// @Produce      json
+// @Param        request body CreateRequest true "Actor creation request"
+// @Success      201 {object} ActorResponse
+// @Failure      400 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /actors [post]
 func (h *Handler) Create(c *gin.Context) {
 	var req CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -65,6 +75,15 @@ func (h *Handler) Create(c *gin.Context) {
 }
 
 // Get handles GET /actors/:id
+// @Summary      Get an actor
+// @Description  Get an actor by ID
+// @Tags         actors
+// @Produce      json
+// @Param        id path string true "Actor ID" format(uuid)
+// @Success      200 {object} ActorResponse
+// @Failure      400 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Router       /actors/{id} [get]
 func (h *Handler) Get(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
@@ -82,7 +101,31 @@ func (h *Handler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, actor)
 }
 
+// ActorResponse represents the API response for an actor
+// @Description Actor data returned by the API
+type ActorResponse struct {
+	ID           string  `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Type         string  `json:"type" example:"llm"`
+	ExternalID   *string `json:"external_id" example:"claude-opus-4"`
+	Name         *string `json:"name" example:"Claude"`
+	Metadata     any     `json:"metadata" swaggertype:"object"`
+	RegisteredAt string  `json:"registered_at" example:"2024-01-15T10:00:00Z"`
+}
+
+// ListResponse represents the response for listing actors
+type ListResponse struct {
+	Actors []ActorResponse `json:"actors"`
+	Count  int             `json:"count"`
+}
+
 // List handles GET /actors
+// @Summary      List actors
+// @Description  List all actors
+// @Tags         actors
+// @Produce      json
+// @Success      200 {object} ListResponse
+// @Failure      500 {object} map[string]string
+// @Router       /actors [get]
 func (h *Handler) List(c *gin.Context) {
 	actors, err := h.repo.List(c.Request.Context())
 	if err != nil {

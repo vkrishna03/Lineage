@@ -32,7 +32,23 @@ func NewHandler(repo *Repository, lineageRepo *lineage.Repository, producer Prod
 	}
 }
 
+// CreateResponse represents the response for event creation
+type CreateResponse struct {
+	Status  string `json:"status" example:"accepted"`
+	Message string `json:"message" example:"Event queued for processing"`
+}
+
 // Create handles POST /events - sends event to Kafka
+// @Summary      Create an event
+// @Description  Submit an event to the processing queue. Events are processed asynchronously and will be hash-chained.
+// @Tags         events
+// @Accept       json
+// @Produce      json
+// @Param        request body Input true "Event creation request"
+// @Success      202 {object} CreateResponse
+// @Failure      400 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /events [post]
 func (h *Handler) Create(c *gin.Context) {
 	var input Input
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -63,6 +79,15 @@ func (h *Handler) Create(c *gin.Context) {
 }
 
 // Get handles GET /events/:id
+// @Summary      Get an event
+// @Description  Get an event by ID
+// @Tags         events
+// @Produce      json
+// @Param        id path string true "Event ID" format(uuid)
+// @Success      200 {object} EventResponse
+// @Failure      400 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Router       /events/{id} [get]
 func (h *Handler) Get(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
@@ -80,7 +105,42 @@ func (h *Handler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, event)
 }
 
+// EventResponse represents the API response for an event
+// @Description Event data returned by the API
+type EventResponse struct {
+	ID              string  `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	ScopeID         string  `json:"scope_id" example:"550e8400-e29b-41d4-a716-446655440001"`
+	ActorID         string  `json:"actor_id" example:"550e8400-e29b-41d4-a716-446655440002"`
+	EventTypeID     string  `json:"event_type_id" example:"550e8400-e29b-41d4-a716-446655440003"`
+	ScopeSequence   int64   `json:"scope_sequence" example:"1"`
+	Intent          string  `json:"intent" example:"decision"`
+	Reason          *string `json:"reason" example:"User approved the recommendation"`
+	CorrectionType  *string `json:"correction_type" example:"supersede"`
+	CorrectsEventID *string `json:"corrects_event_id"`
+	ObservedAt      *string `json:"observed_at" example:"2024-01-15T10:30:00Z"`
+	DecidedAt       *string `json:"decided_at" example:"2024-01-15T10:35:00Z"`
+	IngestedAt      string  `json:"ingested_at" example:"2024-01-15T10:40:00Z"`
+	PrevEventHash   *string `json:"prev_event_hash" example:"abc123..."`
+	EventHash       string  `json:"event_hash" example:"def456..."`
+	Payload         any     `json:"payload"`
+}
+
+// ListResponse represents the response for listing events
+type ListResponse struct {
+	Events []EventResponse `json:"events"`
+	Count  int             `json:"count"`
+}
+
 // ListByScope handles GET /events?scope_id=...
+// @Summary      List events by scope
+// @Description  List all events in a scope, ordered by scope_sequence
+// @Tags         events
+// @Produce      json
+// @Param        scope_id query string true "Scope ID" format(uuid)
+// @Success      200 {object} ListResponse
+// @Failure      400 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /events [get]
 func (h *Handler) ListByScope(c *gin.Context) {
 	scopeIDStr := c.Query("scope_id")
 	if scopeIDStr == "" {
@@ -110,7 +170,22 @@ func (h *Handler) ListByScope(c *gin.Context) {
 	})
 }
 
+// LineageResponse represents the response for event lineage
+type LineageResponse struct {
+	EventID  string          `json:"event_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Parents  []EventResponse `json:"parents"`
+	Children []EventResponse `json:"children"`
+}
+
 // GetLineage handles GET /events/:id/lineage
+// @Summary      Get event lineage
+// @Description  Get parent and child events for a given event
+// @Tags         events
+// @Produce      json
+// @Param        id path string true "Event ID" format(uuid)
+// @Success      200 {object} LineageResponse
+// @Failure      400 {object} map[string]string
+// @Router       /events/{id}/lineage [get]
 func (h *Handler) GetLineage(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)

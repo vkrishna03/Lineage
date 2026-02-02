@@ -21,14 +21,24 @@ func NewHandler(repo *Repository) *Handler {
 
 // CreateRequest represents the request body for creating an event type
 type CreateRequest struct {
-	Name           string          `json:"name" binding:"required"`
-	Version        string          `json:"version" binding:"required"`
-	Description    *string         `json:"description"`
-	PayloadSchema  json.RawMessage `json:"payload_schema"`
-	AllowedIntents []string        `json:"allowed_intents"`
+	Name           string          `json:"name" binding:"required" example:"decision"`
+	Version        string          `json:"version" binding:"required" example:"1.0"`
+	Description    *string         `json:"description" example:"A decision event type"`
+	PayloadSchema  json.RawMessage `json:"payload_schema" swaggertype:"object"`
+	AllowedIntents []string        `json:"allowed_intents" example:"exploration,suggestion,assertion,decision,execution"`
 }
 
 // Create handles POST /event-types
+// @Summary      Create an event type
+// @Description  Create a new event type with optional JSON schema for payload validation
+// @Tags         event-types
+// @Accept       json
+// @Produce      json
+// @Param        request body CreateRequest true "Event type creation request"
+// @Success      201 {object} EventTypeResponse
+// @Failure      400 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /event-types [post]
 func (h *Handler) Create(c *gin.Context) {
 	var req CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -54,6 +64,15 @@ func (h *Handler) Create(c *gin.Context) {
 }
 
 // Get handles GET /event-types/:id
+// @Summary      Get an event type
+// @Description  Get an event type by ID
+// @Tags         event-types
+// @Produce      json
+// @Param        id path string true "Event Type ID" format(uuid)
+// @Success      200 {object} EventTypeResponse
+// @Failure      400 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Router       /event-types/{id} [get]
 func (h *Handler) Get(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
@@ -71,7 +90,33 @@ func (h *Handler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, eventType)
 }
 
+// EventTypeResponse represents the API response for an event type
+// @Description Event type data returned by the API
+type EventTypeResponse struct {
+	ID             string   `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Name           string   `json:"name" example:"decision"`
+	Version        string   `json:"version" example:"1.0"`
+	Description    *string  `json:"description" example:"A decision event type"`
+	PayloadSchema  any      `json:"payload_schema" swaggertype:"object"`
+	AllowedIntents []string `json:"allowed_intents" example:"exploration,suggestion,assertion,decision,execution"`
+	IsActive       bool     `json:"is_active" example:"true"`
+	CreatedAt      string   `json:"created_at" example:"2024-01-15T10:00:00Z"`
+}
+
+// ListResponse represents the response for listing event types
+type ListResponse struct {
+	EventTypes []EventTypeResponse `json:"event_types"`
+	Count      int                 `json:"count"`
+}
+
 // List handles GET /event-types
+// @Summary      List event types
+// @Description  List all active event types
+// @Tags         event-types
+// @Produce      json
+// @Success      200 {object} ListResponse
+// @Failure      500 {object} map[string]string
+// @Router       /event-types [get]
 func (h *Handler) List(c *gin.Context) {
 	eventTypes, err := h.repo.ListActive(c.Request.Context())
 	if err != nil {

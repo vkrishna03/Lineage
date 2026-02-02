@@ -1,4 +1,4 @@
-.PHONY: run-api run-consumer build sqlc generate migrate-up migrate-down migrate-create test lint tidy clean help
+.PHONY: run-api run-consumer build sqlc swagger generate migrate-up migrate-down migrate-create test lint tidy clean help
 
 # Load .env file if it exists
 ifneq (,$(wildcard .env))
@@ -30,8 +30,12 @@ build:
 sqlc:
 	sqlc generate
 
+# Generate Swagger documentation
+swagger:
+	swag init -g cmd/api/main.go -o docs
+
 # Generate all code
-generate: sqlc
+generate: sqlc swagger
 
 # Run database migrations up
 migrate-up:
@@ -75,6 +79,7 @@ clean:
 tools:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+	go install github.com/swaggo/swag/cmd/swag@latest
 
 # Show help
 help:
@@ -83,7 +88,8 @@ help:
 	@echo "  run-consumer   - Run the Kafka consumer"
 	@echo "  build          - Build both binaries"
 	@echo "  sqlc           - Generate SQLC code"
-	@echo "  generate       - Generate all code (SQLC)"
+	@echo "  swagger        - Generate Swagger documentation"
+	@echo "  generate       - Generate all code (SQLC, Swagger)"
 	@echo "  migrate-up     - Run all pending migrations"
 	@echo "  migrate-down   - Rollback all migrations"
 	@echo "  migrate-create - Create a new migration (name=xxx)"

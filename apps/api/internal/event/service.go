@@ -12,16 +12,16 @@ import (
 
 // Input represents the data sent by producers to create an event
 type Input struct {
-	ScopeID          uuid.UUID       `json:"scope_id"`
-	ActorID          uuid.UUID       `json:"actor_id"`
-	EventTypeID      uuid.UUID       `json:"event_type_id"`
-	Intent           string          `json:"intent"`
-	Reason           *string         `json:"reason,omitempty"`
-	CorrectionType   *string         `json:"correction_type,omitempty"`
-	CorrectsEventID  *uuid.UUID      `json:"corrects_event_id,omitempty"`
-	ObservedAt       *time.Time      `json:"observed_at,omitempty"`
-	DecidedAt        *time.Time      `json:"decided_at,omitempty"`
-	Payload          json.RawMessage `json:"payload"`
+	ScopeID          uuid.UUID       `json:"scope_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	ActorID          uuid.UUID       `json:"actor_id" example:"550e8400-e29b-41d4-a716-446655440001"`
+	EventTypeID      uuid.UUID       `json:"event_type_id" example:"550e8400-e29b-41d4-a716-446655440002"`
+	Intent           string          `json:"intent" example:"decision" enums:"exploration,suggestion,assertion,decision,execution"`
+	Reason           *string         `json:"reason,omitempty" example:"User approved the recommendation"`
+	CorrectionType   *string         `json:"correction_type,omitempty" example:"supersede" enums:"supersede,amend,retract"`
+	CorrectsEventID  *uuid.UUID      `json:"corrects_event_id,omitempty" example:"550e8400-e29b-41d4-a716-446655440003"`
+	ObservedAt       *time.Time      `json:"observed_at,omitempty" example:"2024-01-15T10:30:00Z"`
+	DecidedAt        *time.Time      `json:"decided_at,omitempty" example:"2024-01-15T10:35:00Z"`
+	Payload          json.RawMessage `json:"payload" swaggertype:"object"`
 	ParentEventIDs   []uuid.UUID     `json:"parent_event_ids,omitempty"`
 }
 

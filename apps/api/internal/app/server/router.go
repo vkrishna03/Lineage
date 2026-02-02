@@ -2,6 +2,9 @@ package server
 
 import (
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"github.com/lineage/api/internal/actor"
 	"github.com/lineage/api/internal/event"
 	"github.com/lineage/api/internal/eventtype"
@@ -19,6 +22,9 @@ type Config struct {
 
 func NewRouter(cfg Config) *gin.Engine {
 	r := gin.Default()
+
+	// Swagger documentation
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Health endpoint
 	r.GET("/health", cfg.HealthHandler.Check)

@@ -31,11 +31,18 @@ func NewHandler(db *pgxpool.Pool, cfg *config.Config) *Handler {
 
 // Response represents the health check response
 type Response struct {
-	Status   string            `json:"status"`
+	Status   string            `json:"status" example:"ok"`
 	Services map[string]string `json:"services"`
 }
 
 // Check handles GET /health
+// @Summary      Health check
+// @Description  Check the health of the API and its dependencies (Postgres, Kafka)
+// @Tags         health
+// @Produce      json
+// @Success      200 {object} Response
+// @Failure      503 {object} Response
+// @Router       /health [get]
 func (h *Handler) Check(c *gin.Context) {
 	resp := Response{
 		Status:   "ok",
