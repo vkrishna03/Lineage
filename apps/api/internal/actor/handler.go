@@ -54,7 +54,7 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	if !validTypes[req.Type] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid actor type"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid actor type (valid: human, llm, agent, service, tool)"})
 		return
 	}
 

@@ -80,7 +80,7 @@ func NewApp(ctx context.Context) (*App, error) {
 	scopeHandler := scope.NewHandler(scopeRepo)
 	actorHandler := actor.NewHandler(actorRepo)
 	eventTypeHandler := eventtype.NewHandler(eventTypeRepo)
-	eventHandler := event.NewHandler(eventRepo, lineageRepo, producer)
+	eventHandler := event.NewHandler(eventRepo, lineageRepo, eventTypeRepo, producer)
 
 	// Create router
 	router := server.NewRouter(server.Config{

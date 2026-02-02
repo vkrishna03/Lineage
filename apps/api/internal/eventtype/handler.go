@@ -46,6 +46,18 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
+	// Validate payload_schema is a valid JSON schema
+	if err := ValidatePayloadSchema(req.PayloadSchema); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate allowed_intents contains only valid intents
+	if err := ValidateAllowedIntents(req.AllowedIntents); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	params := sqlc.CreateEventTypeParams{
 		Name:           req.Name,
 		Version:        req.Version,

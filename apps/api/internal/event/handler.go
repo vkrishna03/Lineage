@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/lineage/api/internal/app/db/sqlc"
+	"github.com/lineage/api/internal/eventtype"
 	"github.com/lineage/api/internal/lineage"
 )
 
@@ -18,17 +19,21 @@ type Producer interface {
 
 // Handler handles HTTP requests for events
 type Handler struct {
-	repo        *Repository
-	lineageRepo *lineage.Repository
-	producer    Producer
+	repo          *Repository
+	lineageRepo   *lineage.Repository
+	eventtypeRepo *eventtype.Repository
+	producer      Producer
+	validator     *Validator
 }
 
 // NewHandler creates a new event handler
-func NewHandler(repo *Repository, lineageRepo *lineage.Repository, producer Producer) *Handler {
+func NewHandler(repo *Repository, lineageRepo *lineage.Repository, eventtypeRepo *eventtype.Repository, producer Producer) *Handler {
 	return &Handler{
-		repo:        repo,
-		lineageRepo: lineageRepo,
-		producer:    producer,
+		repo:          repo,
+		lineageRepo:   lineageRepo,
+		eventtypeRepo: eventtypeRepo,
+		producer:      producer,
+		validator:     NewValidator(),
 	}
 }
 
@@ -57,12 +62,25 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	if !ValidateIntent(input.Intent) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid intent"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid intent (valid: exploration, suggestion, assertion, decision, execution)"})
 		return
 	}
 
 	if input.CorrectionType != nil && !ValidateCorrectionType(*input.CorrectionType) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid correction_type"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid correction_type (valid: supersede, amend, retract)"})
+		return
+	}
+
+	// Fetch event type and validate payload against schema
+	eventType, err := h.eventtypeRepo.GetByID(c.Request.Context(), input.EventTypeID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid event_type_id"})
+		return
+	}
+
+	if err := h.validator.ValidatePayload(input.Payload, eventType.PayloadSchema); err != nil {
+		slog.Debug("payload validation failed", "event_type_id", input.EventTypeID, "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 

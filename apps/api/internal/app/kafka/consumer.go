@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -14,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lineage/api/internal/app/db/sqlc"
 	"github.com/lineage/api/internal/event"
-	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/sasl/scram"
 )
@@ -135,10 +133,9 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) error 
 	}
 
 	// Validate payload against JSON Schema (if schema exists)
-	if len(eventType.PayloadSchema) > 0 {
-		if err := validatePayload(input.Payload, eventType.PayloadSchema); err != nil {
-			return fmt.Errorf("payload validation failed: %w", err)
-		}
+	validator := event.NewValidator()
+	if err := validator.ValidatePayload(input.Payload, eventType.PayloadSchema); err != nil {
+		return fmt.Errorf("payload validation failed: %w", err)
 	}
 
 	// Get the last event in scope to determine scope_sequence and prev_hash
@@ -224,26 +221,6 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) error 
 
 	slog.Info("processed event", "id", evt.ID, "scope_sequence", evt.ScopeSequence, "hash", evt.EventHash)
 	return nil
-}
-
-// validatePayload validates JSON payload against a JSON Schema
-func validatePayload(payload json.RawMessage, schemaBytes []byte) error {
-	compiler := jsonschema.NewCompiler()
-	if err := compiler.AddResource("schema.json", bytes.NewReader(schemaBytes)); err != nil {
-		return err
-	}
-
-	schema, err := compiler.Compile("schema.json")
-	if err != nil {
-		return err
-	}
-
-	var payloadData interface{}
-	if err := json.Unmarshal(payload, &payloadData); err != nil {
-		return err
-	}
-
-	return schema.Validate(payloadData)
 }
 
 // Close closes the consumer
