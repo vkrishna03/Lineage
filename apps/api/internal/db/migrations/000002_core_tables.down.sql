@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS event_type_registry;
+DROP TABLE IF EXISTS actors;
+DROP TABLE IF EXISTS scopes;

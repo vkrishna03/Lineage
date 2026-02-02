@@ -1,0 +1,537 @@
+// ============================================================
+// Epistemic Transparency & Event Lineage System
+// Core Schema (DBML) — v2
+// ============================================================
+//
+//
+// INGESTION PIPELINE
+// ------------------
+// Kafka is the ingestion backbone.
+//   Producer  → emits event to Kafka topic
+//   Topic     → partitioned by scope_id (one scope = one partition = total order)
+//   Consumer  → validates schema, computes hash chain, assigns scope_sequence
+//               from Kafka partition offset, writes to Postgres
+//
+// This means:
+//   - Ordering within a scope is guaranteed by Kafka partition ordering
+//   - scope_sequence in the DB mirrors the Kafka partition offset
+//   - Hash-chaining happens in the consumer BEFORE the DB write
+//   - The DB is the queryable materialised view of the Kafka log
+//
+//
+// ENFORCEMENT PHILOSOPHY
+// ----------------------
+// Append-only semantics and correction integrity are enforced at
+// the DB level wherever SQL can express them. Constraints that
+// require graph traversal or cross-system coordination are
+// enforced at the application layer and documented clearly.
+//
+// Legend used throughout:
+//   [DB-ENFORCED]  — lives in DDL, CHECK, trigger, or rule
+//   [APP-ENFORCED] — lives in consumer / application code
+//   [KAFKA]        — guaranteed by the Kafka partition model
+//   [CONVENTION]   — documented contract, not machine-enforced
+//
+
+
+// =========================
+//        ENUMS
+// =========================
+
+Enum actor_type {
+  human
+  llm
+  agent
+  service
+  tool
+}
+
+Enum event_intent {
+  exploration   [note: 'Low-commitment probing or brainstorming']
+  suggestion    [note: 'A proposed course of action, not yet committed']
+  assertion     [note: 'A claim about the state of the world']
+  decision      [note: 'A committed choice by an accountable actor']
+  execution     [note: 'A real-world side effect was triggered']
+}
+
+Enum score_type {
+  confidence    [note: 'How certain the actor is about this event']
+  relevance     [note: 'How relevant to the target context']
+  reliability   [note: 'Downstream-assessed reliability']
+  agreement     [note: 'Degree of agreement with prior events']
+}
+
+// Score category values are intentionally generic so they work
+// across all score_types (confidence, relevance, reliability, etc.)
+Enum score_category {
+  very_low
+  low
+  moderate
+  high
+  very_high
+}
+
+Enum correction_type {
+  supersede     [note: 'Fully replaces the corrected event']
+  amend         [note: 'Partially modifies or extends']
+  retract       [note: 'Withdraws the corrected event; no replacement']
+}
+
+Enum artifact_role {
+  input
+  output
+}
+
+
+// =========================
+//    SCOPED TRUST BOUNDARY
+// =========================
+// Every event and artifact lives inside a scope.
+// Scopes prevent cross-project, cross-environment trust leakage.
+// In Kafka terms, scope_id determines the partition key.
+
+Table scopes {
+  id            uuid        [pk]
+  project       varchar     [not null]
+  domain        varchar
+  environment   varchar     [note: 'e.g. production | staging | sandbox']
+  created_at    timestamptz [not null, default: `now()`]
+
+  indexes {
+    (project, domain, environment) [unique]
+  }
+}
+
+
+// =========================
+//         ACTORS
+// =========================
+// An actor is anything that can emit an event.
+// The system does not own identity — external_id references
+// the actor in the originating system (IAM, model registry, etc.)
+
+Table actors {
+  id            uuid        [pk]
+  type          actor_type  [not null]
+  external_id   varchar     [note: 'Identifier in the originating system']
+  name          varchar
+  metadata      jsonb
+  registered_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (type, external_id) [unique]
+  }
+}
+
+
+// =========================
+//   EVENT TYPE REGISTRY
+// =========================
+// Every event must reference a registered type+version.
+// This is the protocol catalog — it defines what event shapes
+// are legal and what their payloads look like.
+//
+// [APP-ENFORCED] payload_schema is a JSON Schema document.
+//   The Kafka consumer validates event payloads against this
+//   schema BEFORE writing to the DB. The DB stores the FK
+//   but does not evaluate JSON Schema at write time.
+//
+// [APP-ENFORCED] allowed_intents restricts which event_intent
+//   values are semantically valid for a given event type.
+//   e.g. a "data.ingested" event should never carry intent=decision.
+//   Enforced by the consumer, not by a DB constraint, because
+//   the mapping is domain logic that evolves independently.
+
+Table event_type_registry {
+  id              uuid        [pk]
+  name            varchar     [not null, note: 'e.g. recommendation.created, data.ingested']
+  version         varchar     [not null, note: 'e.g. v1, v2']
+  description     text
+  payload_schema  jsonb       [note: 'JSON Schema defining the valid shape of event.payload']
+  allowed_intents varchar[]   [note: 'Subset of event_intent valid for this type. Enforced at app layer.']
+  is_active       boolean     [not null, default: true]
+  created_at      timestamptz [not null, default: `now()`]
+
+  indexes {
+    (name, version) [unique]
+  }
+
+  Note: '''
+    Mutable table — this is configuration, not event data.
+    New versions of an event type get new rows; old rows are
+    deactivated (is_active = false), never deleted.
+  '''
+}
+
+
+// =========================
+//    EVENTS (append-only)
+// =========================
+//
+// ┌─────────────────────────────────────────────────────────┐
+// │  APPEND-ONLY ENFORCEMENT                  [DB-ENFORCED] │
+// │                                                         │
+// │  UPDATE and DELETE are denied via DB rules AND           │
+// │  role-level REVOKE. Belt AND suspenders.                 │
+// │                                                         │
+// │  See APPENDIX at bottom for exact SQL.                   │
+// └─────────────────────────────────────────────────────────┘
+//
+// ┌─────────────────────────────────────────────────────────┐
+// │  HASH DETERMINISM CONTRACT                [CONVENTION]   │
+// │                                                         │
+// │  event_hash = SHA-256(canonical_json(event_content))     │
+// │                                                         │
+// │  Canonical JSON is computed as:                          │
+// │    1. Select fields: scope_id, actor_id, event_type_id, │
+// │       intent, scope_sequence, correction_type,           │
+// │       corrects_event_id, observed_at, decided_at,        │
+// │       reason, payload                                    │
+// │    2. Exclude: id, ingested_at, prev_event_hash,         │
+// │       event_hash (assigned at write time, not content)   │
+// │    3. Serialize: sorted keys, no whitespace              │
+// │       (RFC 8785 — JSON Canonicalization Scheme / JCS)    │
+// │    4. Hash the resulting byte string with SHA-256        │
+// │                                                         │
+// │  Every producer and consumer MUST use identical          │
+// │  canonicalization. If two systems hash differently,      │
+// │  the chain breaks and trust is lost.                     │
+// │                                                         │
+// │  prev_event_hash = event_hash of the immediately         │
+// │  preceding event in the same scope (by scope_sequence).  │
+// │  For the first event in a scope (scope_sequence = 0),    │
+// │  prev_event_hash is NULL (genesis event).                │
+// └─────────────────────────────────────────────────────────┘
+
+Table events {
+  id                  uuid                [pk]
+  scope_id            uuid                [not null, ref: > scopes.id]
+  actor_id            uuid                [not null, ref: > actors.id]
+  event_type_id       uuid                [not null, ref: > event_type_registry.id]
+
+  // ── Ordering ───────────────────────────────────────
+  // [KAFKA] Derived from Kafka partition offset.
+  //   Guarantees total order within a scope.
+  //   Assigned by the consumer before DB write.
+  scope_sequence      bigint              [not null, note: 'Monotonic per scope. Mirrors Kafka partition offset.']
+
+  // ── Intent ─────────────────────────────────────────
+  // NOT NULL because every event MUST declare its epistemic
+  // posture. An event without intent is ambiguous and
+  // untrustworthy — was it a suggestion or a decision?
+  // That distinction changes how downstream consumers should
+  // weigh it.
+  intent              event_intent        [not null]
+
+  // ── Reason ─────────────────────────────────────────
+  // Human-readable explanation of WHY this event was emitted.
+  // Optional but strongly encouraged for auditability.
+  // e.g. "Model retrained on Q4 data with higher sample size"
+  // e.g. "Analyst overrode recommendation: margin too thin"
+  reason              text
+
+  // ── Correction chain ───────────────────────────────
+  // A correction IS an event — it doesn't live in a separate
+  // table. It simply points back to the event it corrects.
+  //
+  // [DB-ENFORCED] Both-or-neither constraint:
+  //   CHECK (
+  //     (correction_type IS NULL AND corrects_event_id IS NULL)
+  //     OR
+  //     (correction_type IS NOT NULL AND corrects_event_id IS NOT NULL)
+  //   )
+  //
+  // [DB-ENFORCED] Same-scope constraint (trigger):
+  //   corrects_event_id must reference an event with the
+  //   same scope_id. Corrections cannot cross trust boundaries.
+  //
+  // [DB-ENFORCED] Temporal ordering constraint (trigger):
+  //   The corrected event must have a strictly LOWER
+  //   scope_sequence than this event. You cannot correct
+  //   the future.
+  correction_type     correction_type
+  corrects_event_id   uuid                [ref: > events.id]
+
+  // ── Time semantics ─────────────────────────────────
+  // Three timestamps for time-relative reasoning:
+  //   observed_at : when the underlying action/measurement happened in the real world
+  //   decided_at  : when a commitment was made (may differ from observation)
+  //   ingested_at : when this system recorded the event (always DB-assigned)
+  observed_at         timestamptz
+  decided_at          timestamptz
+  ingested_at         timestamptz         [not null, default: `now()`]
+
+  // ── Hash chain ─────────────────────────────────────
+  // See HASH DETERMINISM CONTRACT above.
+  prev_event_hash     varchar             [note: 'NULL only for genesis event (scope_sequence = 0)']
+  event_hash          varchar             [not null]
+
+  // ── Payload ────────────────────────────────────────
+  // Structure governed by event_type_registry.payload_schema.
+  // [APP-ENFORCED] Validated by consumer against JSON Schema
+  //   before DB write.
+  payload             jsonb               [not null]
+
+  indexes {
+    (scope_id, scope_sequence) [unique, note: 'Total ordering guarantee within a scope']
+    scope_id
+    actor_id
+    event_type_id
+    corrects_event_id
+    ingested_at
+    event_hash [unique]
+  }
+
+  Note: 'IMMUTABLE. Never updated or deleted. See append-only enforcement.'
+}
+
+
+// =========================
+//      EVENT SCORES
+// =========================
+//
+// Scores are normalised and separated from events so that:
+//   1. Multiple score types coexist (confidence, relevance, ...)
+//   2. Multiple actors can independently score the same event
+//   3. Scores can arrive after the event (async assessment)
+//
+// ┌─────────────────────────────────────────────────────────┐
+// │  DERIVATION RULE                          [CONVENTION]   │
+// │                                                         │
+// │  `value` (numeric 0.0–1.0) is the DECLARED input.       │
+// │  It is always the source of truth.                       │
+// │                                                         │
+// │  `category` is DERIVED from `value` at the app layer     │
+// │  using configurable thresholds, then stored alongside    │
+// │  for query convenience (e.g. WHERE category = 'high').   │
+// │                                                         │
+// │  If a human scorer thinks in categories ("fairly         │
+// │  confident"), the SDK maps that to a canonical numeric   │
+// │  value before insertion. The DB always receives both.    │
+// │                                                         │
+// │  Default thresholds (configurable per domain):           │
+// │    very_low  : 0.00 – 0.19                               │
+// │    low       : 0.20 – 0.39                               │
+// │    moderate  : 0.40 – 0.59                               │
+// │    high      : 0.60 – 0.79                               │
+// │    very_high : 0.80 – 1.00                               │
+// └─────────────────────────────────────────────────────────┘
+//
+// ┌─────────────────────────────────────────────────────────┐
+// │  APPEND-ONLY ENFORCEMENT                  [DB-ENFORCED]  │
+// │                                                         │
+// │  Same rules/grants as the events table.                  │
+// │  A new assessment = a new row, never an update.          │
+// └─────────────────────────────────────────────────────────┘
+
+Table event_scores {
+  id                  uuid                [pk]
+  event_id            uuid                [not null, ref: > events.id]
+  type                score_type          [not null]
+  value               decimal             [not null, note: '0.0–1.0 normalised. Source of truth. Always declared.']
+  category            score_category      [not null, note: 'Derived from value at app layer. Stored for query convenience.']
+  scored_by           uuid                [ref: > actors.id, note: 'Actor that assigned this score. NULL = self-reported by the event actor.']
+  reason              text                [note: 'Why this score was given']
+  metadata            jsonb               [note: 'Model name, scoring method, thresholds used, etc.']
+  created_at          timestamptz         [not null, default: `now()`]
+
+  indexes {
+    event_id
+    (event_id, type, scored_by) [unique, note: 'One score per type per assessor per event']
+  }
+
+  Note: 'Append-only. A new assessment is a new row, not an update.'
+}
+
+
+// =========================
+//       ARTIFACTS
+// =========================
+// An artifact is any data object produced or consumed by an event.
+// Content-addressed via content_hash for deduplication within a scope.
+// Actual binary/text content lives in external object storage —
+// uri points to it.
+
+Table artifacts {
+  id            uuid        [pk]
+  scope_id      uuid        [not null, ref: > scopes.id]
+  content_hash  varchar     [not null, note: 'SHA-256 of artifact content']
+  content_type  varchar     [not null, note: 'MIME type']
+  uri           varchar     [note: 'External storage reference (S3, GCS, etc.)']
+  metadata      jsonb
+  created_at    timestamptz [not null, default: `now()`]
+
+  indexes {
+    (scope_id, content_hash) [unique]
+  }
+}
+
+
+// =========================
+//    EVENT ↔ ARTIFACT
+// =========================
+// Junction table recording which artifacts an event consumed
+// (input) or produced (output).
+
+Table event_artifacts {
+  id          uuid          [pk]
+  event_id    uuid          [not null, ref: > events.id]
+  artifact_id uuid          [not null, ref: > artifacts.id]
+  role        artifact_role [not null, note: 'input = consumed by event, output = produced by event']
+
+  indexes {
+    (event_id, artifact_id, role) [unique]
+    artifact_id
+  }
+}
+
+
+// =========================
+//     EVENT LINEAGE
+// =========================
+//
+// Explicit causal edges between events, forming a directed
+// acyclic graph (DAG). This is the backbone of
+// "where did this come from?" queries.
+//
+// ┌─────────────────────────────────────────────────────────┐
+// │  ACYCLICITY INVARIANT                    [APP-ENFORCED]  │
+// │                                                         │
+// │  Cycles in lineage destroy epistemic meaning:            │
+// │  "A caused B caused A" is incoherent.                    │
+// │                                                         │
+// │  Enforcement strategy (layered):                         │
+// │                                                         │
+// │  1. WRITE-TIME (Kafka consumer):                         │
+// │     Before inserting a lineage edge, the consumer        │
+// │     checks reachability:                                 │
+// │       "Is child_event_id already an ancestor of          │
+// │        parent_event_id?"                                 │
+// │     If yes → reject the edge.                            │
+// │     For performance, cap traversal depth (e.g. 100       │
+// │     hops). Beyond that, periodic detection catches it.   │
+// │                                                         │
+// │  2. PERIODIC (background job):                           │
+// │     A scheduled job runs full cycle detection             │
+// │     (Tarjan's SCC or DFS) on the lineage graph per       │
+// │     scope and raises an alert if any cycles are found.   │
+// │                                                         │
+// │  3. SCOPE BOUNDARY:                                      │
+// │     Cross-scope lineage edges are allowed but are        │
+// │     explicitly flagged. Cycle detection runs per scope   │
+// │     by default; cross-scope on a longer cadence.         │
+// │                                                         │
+// │  Why not DB-enforced?                                    │
+// │     Recursive CTE cycle checks inside a trigger are      │
+// │     expensive and risk locking under Kafka-level         │
+// │     throughput. The consumer is the right enforcement     │
+// │     point — it can batch, cache ancestor sets, and       │
+// │     reject before the DB is ever touched.                │
+// └─────────────────────────────────────────────────────────┘
+//
+// ┌─────────────────────────────────────────────────────────┐
+// │  APPEND-ONLY ENFORCEMENT                  [DB-ENFORCED]  │
+// │                                                         │
+// │  Same rules/grants as the events table.                  │
+// └─────────────────────────────────────────────────────────┘
+
+Table event_lineage {
+  id              uuid    [pk]
+  parent_event_id uuid    [not null, ref: > events.id]
+  child_event_id  uuid    [not null, ref: > events.id]
+  relationship    varchar [not null, note: 'caused_by | derived_from | triggered_by | informed_by']
+
+  indexes {
+    parent_event_id
+    child_event_id
+    (parent_event_id, child_event_id, relationship) [unique]
+  }
+}
+
+
+// =============================================================
+//
+//  APPENDIX: DB-LEVEL ENFORCEMENT SQL (Postgres)
+//
+//  Not expressible in DBML but MUST be applied during
+//  migration. This is the canonical reference.
+//
+// =============================================================
+//
+//
+//  1. APPEND-ONLY RULES
+//  --------------------
+//  Applied to: events, event_scores, event_lineage,
+//              event_artifacts
+//
+//  For each table:
+//
+//    CREATE RULE {table}_no_update AS
+//      ON UPDATE TO {table} DO INSTEAD NOTHING;
+//    CREATE RULE {table}_no_delete AS
+//      ON DELETE TO {table} DO INSTEAD NOTHING;
+//
+//    REVOKE UPDATE, DELETE ON {table} FROM app_writer;
+//
+//  Why both? Rules protect against application bugs.
+//  REVOKE protects against privilege escalation.
+//  Together they are belt + suspenders.
+//
+//
+//  2. CORRECTION INTEGRITY
+//  -----------------------
+//  Applied to: events
+//
+//  a) Both-or-neither CHECK:
+//
+//    ALTER TABLE events ADD CONSTRAINT chk_correction_pair
+//      CHECK (
+//        (correction_type IS NULL AND corrects_event_id IS NULL)
+//        OR
+//        (correction_type IS NOT NULL AND corrects_event_id IS NOT NULL)
+//      );
+//
+//  b) Same-scope + temporal ordering TRIGGER:
+//
+//    CREATE FUNCTION trg_correction_integrity()
+//      RETURNS trigger AS $$
+//    BEGIN
+//      IF NEW.corrects_event_id IS NOT NULL THEN
+//        -- Corrected event must be in the same scope
+//        IF NOT EXISTS (
+//          SELECT 1 FROM events
+//          WHERE id = NEW.corrects_event_id
+//            AND scope_id = NEW.scope_id
+//        ) THEN
+//          RAISE EXCEPTION
+//            'Corrected event must be in the same scope';
+//        END IF;
+//
+//        -- Corrected event must precede this one
+//        IF NOT EXISTS (
+//          SELECT 1 FROM events
+//          WHERE id = NEW.corrects_event_id
+//            AND scope_sequence < NEW.scope_sequence
+//        ) THEN
+//          RAISE EXCEPTION
+//            'Corrected event must precede correcting event';
+//        END IF;
+//      END IF;
+//      RETURN NEW;
+//    END;
+//    $$ LANGUAGE plpgsql;
+//
+//    CREATE TRIGGER enforce_correction_integrity
+//      BEFORE INSERT ON events
+//      FOR EACH ROW EXECUTE FUNCTION trg_correction_integrity();
+//
+//
+//  3. SCORE RANGE
+//  --------------
+//  Applied to: event_scores
+//
+//    ALTER TABLE event_scores ADD CONSTRAINT chk_score_range
+//      CHECK (value >= 0.0 AND value <= 1.0);
+//
+//
+// =============================================================
