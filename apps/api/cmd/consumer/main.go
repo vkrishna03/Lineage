@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,28 +17,30 @@ func main() {
 	// Initialize consumer
 	application, err := app.NewConsumerApp(ctx)
 	if err != nil {
-		log.Fatalf("Failed to initialize consumer: %v", err)
+		slog.Error("failed to initialize consumer", "error", err)
+		os.Exit(1)
 	}
 	defer application.DB.Close()
 	defer application.Consumer.Close()
 
-	log.Println("Consumer initialized")
-	log.Println("Connected to database")
+	slog.Info("consumer initialized")
+	slog.Info("connected to database")
 
 	// Handle graceful shutdown
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
-		log.Println("Shutting down consumer...")
+		slog.Info("shutting down consumer...")
 		cancel()
 	}()
 
 	// Start consumer
-	log.Printf("Starting Kafka consumer for topic: %s", application.Config.KafkaTopic)
+	slog.Info("starting kafka consumer", "topic", application.Config.KafkaTopic)
 	if err := application.Consumer.Start(ctx); err != nil && err != context.Canceled {
-		log.Fatalf("Consumer error: %v", err)
+		slog.Error("consumer error", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("Consumer stopped")
+	slog.Info("consumer stopped")
 }

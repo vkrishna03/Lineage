@@ -46,3 +46,6 @@ build/
 # Temporary files
 tmp/
 temp/
+
+# Secrets
+**/secrets/

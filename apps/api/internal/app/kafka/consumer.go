@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -32,6 +34,7 @@ type ConsumerConfig struct {
 	SASLEnabled  bool
 	SASLUsername string
 	SASLPassword string
+	CAPath       string // Path to CA certificate
 }
 
 // NewConsumer creates a new Kafka consumer
@@ -51,9 +54,24 @@ func NewConsumer(cfg ConsumerConfig, db *pgxpool.Pool) (*Consumer, error) {
 			return nil, err
 		}
 
+		tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
+
+		// Load CA certificate if provided
+		if cfg.CAPath != "" {
+			caCert, err := os.ReadFile(cfg.CAPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read CA cert: %w", err)
+			}
+			caCertPool := x509.NewCertPool()
+			if !caCertPool.AppendCertsFromPEM(caCert) {
+				return nil, fmt.Errorf("failed to parse CA cert")
+			}
+			tlsConfig.RootCAs = caCertPool
+		}
+
 		dialer := &kafka.Dialer{
 			SASLMechanism: mechanism,
-			TLS:           &tls.Config{}, // Aiven requires TLS
+			TLS:           tlsConfig,
 		}
 		readerCfg.Dialer = dialer
 	}
@@ -67,7 +85,7 @@ func NewConsumer(cfg ConsumerConfig, db *pgxpool.Pool) (*Consumer, error) {
 
 // Start begins consuming messages from Kafka
 func (c *Consumer) Start(ctx context.Context) error {
-	log.Printf("Starting Kafka consumer for topic: %s", c.reader.Config().Topic)
+	slog.Info("starting kafka consumer", "topic", c.reader.Config().Topic)
 
 	for {
 		select {
@@ -76,18 +94,18 @@ func (c *Consumer) Start(ctx context.Context) error {
 		default:
 			msg, err := c.reader.FetchMessage(ctx)
 			if err != nil {
-				log.Printf("Error fetching message: %v", err)
+				slog.Error("failed to fetch message", "error", err)
 				continue
 			}
 
 			if err := c.processMessage(ctx, msg); err != nil {
-				log.Printf("Error processing message: %v", err)
+				slog.Error("failed to process message", "error", err)
 				// Don't commit on error - message will be retried
 				continue
 			}
 
 			if err := c.reader.CommitMessages(ctx, msg); err != nil {
-				log.Printf("Error committing message: %v", err)
+				slog.Error("failed to commit message", "error", err)
 			}
 		}
 	}
@@ -200,11 +218,11 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) error 
 			Relationship:  "derived_from",
 		})
 		if err != nil {
-			log.Printf("Warning: failed to create lineage edge: %v", err)
+			slog.Warn("failed to create lineage edge", "error", err)
 		}
 	}
 
-	log.Printf("Processed event: id=%s scope_sequence=%d hash=%s", evt.ID, evt.ScopeSequence, evt.EventHash)
+	slog.Info("processed event", "id", evt.ID, "scope_sequence", evt.ScopeSequence, "hash", evt.EventHash)
 	return nil
 }
 

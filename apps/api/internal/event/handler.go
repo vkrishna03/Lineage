@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -50,7 +51,8 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	if err := h.producer.ProduceEvent(c.Request.Context(), input); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to produce event"})
+		slog.Error("kafka produce failed", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to produce event: " + err.Error()})
 		return
 	}
 

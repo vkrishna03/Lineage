@@ -10,6 +10,7 @@ import (
 type Config struct {
 	DatabaseURL string
 	Port        string
+	GinMode     string // debug, release, test
 
 	// Kafka
 	KafkaBrokers  []string
@@ -20,12 +21,14 @@ type Config struct {
 	KafkaSASLEnabled  bool
 	KafkaSASLUsername string
 	KafkaSASLPassword string
+	KafkaCAPath       string // Path to CA certificate for TLS
 }
 
 func Load() (*Config, error) {
 	cfg := &Config{
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		Port:        getEnvOrDefault("PORT", "8080"),
+		GinMode:     getEnvOrDefault("GIN_MODE", "debug"),
 
 		// Kafka
 		KafkaBrokers: strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
@@ -36,6 +39,7 @@ func Load() (*Config, error) {
 		KafkaSASLEnabled:  getEnvOrDefault("KAFKA_SASL_ENABLED", "false") == "true",
 		KafkaSASLUsername: os.Getenv("KAFKA_SASL_USERNAME"),
 		KafkaSASLPassword: os.Getenv("KAFKA_SASL_PASSWORD"),
+		KafkaCAPath:       os.Getenv("KAFKA_CA_PATH"),
 	}
 
 	if cfg.DatabaseURL == "" {

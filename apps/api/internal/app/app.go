@@ -42,6 +42,9 @@ func NewApp(ctx context.Context) (*App, error) {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Set Gin mode
+	gin.SetMode(cfg.GinMode)
+
 	// Connect to database
 	db, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -58,6 +61,7 @@ func NewApp(ctx context.Context) (*App, error) {
 		SASLEnabled:  cfg.KafkaSASLEnabled,
 		SASLUsername: cfg.KafkaSASLUsername,
 		SASLPassword: cfg.KafkaSASLPassword,
+		CAPath:       cfg.KafkaCAPath,
 	})
 	if err != nil {
 		db.Close()
@@ -117,6 +121,7 @@ func NewConsumerApp(ctx context.Context) (*ConsumerApp, error) {
 		SASLEnabled:  cfg.KafkaSASLEnabled,
 		SASLUsername: cfg.KafkaSASLUsername,
 		SASLPassword: cfg.KafkaSASLPassword,
+		CAPath:       cfg.KafkaCAPath,
 	}, db)
 	if err != nil {
 		db.Close()

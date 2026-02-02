@@ -3,7 +3,10 @@ package kafka
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"fmt"
+	"os"
 
 	"github.com/google/uuid"
 	"github.com/lineage/api/internal/event"
@@ -23,6 +26,7 @@ type ProducerConfig struct {
 	SASLEnabled  bool
 	SASLUsername string
 	SASLPassword string
+	CAPath       string // Path to CA certificate
 }
 
 // NewProducer creates a new Kafka producer
@@ -40,9 +44,24 @@ func NewProducer(cfg ProducerConfig) (*Producer, error) {
 			return nil, err
 		}
 
+		tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
+
+		// Load CA certificate if provided
+		if cfg.CAPath != "" {
+			caCert, err := os.ReadFile(cfg.CAPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read CA cert: %w", err)
+			}
+			caCertPool := x509.NewCertPool()
+			if !caCertPool.AppendCertsFromPEM(caCert) {
+				return nil, fmt.Errorf("failed to parse CA cert")
+			}
+			tlsConfig.RootCAs = caCertPool
+		}
+
 		writer.Transport = &kafka.Transport{
 			SASL: mechanism,
-			TLS:  &tls.Config{}, // Aiven requires TLS
+			TLS:  tlsConfig,
 		}
 	}
 

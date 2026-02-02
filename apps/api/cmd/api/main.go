@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,27 +17,29 @@ func main() {
 	// Initialize application
 	application, err := app.NewApp(ctx)
 	if err != nil {
-		log.Fatalf("Failed to initialize application: %v", err)
+		slog.Error("failed to initialize application", "error", err)
+		os.Exit(1)
 	}
 	defer application.DB.Close()
 	defer application.Producer.Close()
 
-	log.Println("Application initialized")
-	log.Println("Connected to database")
-	log.Println("Kafka producer initialized")
+	slog.Info("application initialized")
+	slog.Info("connected to database")
+	slog.Info("kafka producer initialized")
 
 	// Handle graceful shutdown
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
-		log.Println("Shutting down...")
+		slog.Info("shutting down...")
 		cancel()
 	}()
 
 	// Start server
-	log.Printf("Starting API server on port %s", application.Config.Port)
+	slog.Info("starting api server", "port", application.Config.Port)
 	if err := application.Router.Run(":" + application.Config.Port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		slog.Error("failed to start server", "error", err)
+		os.Exit(1)
 	}
 }
