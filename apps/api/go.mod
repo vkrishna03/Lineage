@@ -9,6 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/segmentio/kafka-go v0.4.50
+	github.com/shopspring/decimal v1.4.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6

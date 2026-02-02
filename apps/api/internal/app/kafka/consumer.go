@@ -9,12 +9,14 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lineage/api/internal/app/db/sqlc"
 	"github.com/lineage/api/internal/event"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/sasl/scram"
+	"github.com/shopspring/decimal"
 )
 
 // Consumer processes events from Kafka and writes to Postgres
@@ -219,8 +221,65 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) error 
 		}
 	}
 
+	// Create inline confidence score if provided
+	if input.Confidence != nil {
+		if err := c.createInlineScore(ctx, evt.ID, *input.Confidence); err != nil {
+			slog.Warn("failed to create inline confidence score", "event_id", evt.ID, "error", err)
+		}
+	}
+
+	// Link input artifacts if provided
+	for _, artifactID := range input.InputArtifactIDs {
+		_, err := c.queries.LinkArtifact(ctx, sqlc.LinkArtifactParams{
+			EventID:    evt.ID,
+			ArtifactID: artifactID,
+			Role:       sqlc.ArtifactRoleInput,
+		})
+		if err != nil {
+			slog.Warn("failed to link input artifact", "event_id", evt.ID, "artifact_id", artifactID, "error", err)
+		}
+	}
+
+	// Link output artifacts if provided
+	for _, artifactID := range input.OutputArtifactIDs {
+		_, err := c.queries.LinkArtifact(ctx, sqlc.LinkArtifactParams{
+			EventID:    evt.ID,
+			ArtifactID: artifactID,
+			Role:       sqlc.ArtifactRoleOutput,
+		})
+		if err != nil {
+			slog.Warn("failed to link output artifact", "event_id", evt.ID, "artifact_id", artifactID, "error", err)
+		}
+	}
+
 	slog.Info("processed event", "id", evt.ID, "scope_sequence", evt.ScopeSequence, "hash", evt.EventHash)
 	return nil
+}
+
+// createInlineScore creates a confidence score for an event
+func (c *Consumer) createInlineScore(ctx context.Context, eventID uuid.UUID, confidence float64) error {
+	// Validate confidence range
+	if confidence < 0 || confidence > 1 {
+		return fmt.Errorf("confidence must be between 0.0 and 1.0")
+	}
+
+	// Convert to pgtype.Numeric
+	decValue := decimal.NewFromFloat(confidence)
+	numericValue := pgtype.Numeric{}
+	if err := numericValue.Scan(decValue.String()); err != nil {
+		return fmt.Errorf("failed to convert confidence value: %w", err)
+	}
+
+	// Derive category from value
+	category := event.DeriveScoreCategory(confidence)
+
+	_, err := c.queries.InsertScore(ctx, sqlc.InsertScoreParams{
+		EventID:  eventID,
+		Type:     sqlc.ScoreTypeConfidence,
+		Value:    numericValue,
+		Category: sqlc.ScoreCategory(category),
+	})
+	return err
 }
 
 // Close closes the consumer

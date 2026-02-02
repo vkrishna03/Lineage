@@ -23,6 +23,13 @@ type Input struct {
 	DecidedAt        *time.Time      `json:"decided_at,omitempty" example:"2024-01-15T10:35:00Z"`
 	Payload          json.RawMessage `json:"payload" swaggertype:"object"`
 	ParentEventIDs   []uuid.UUID     `json:"parent_event_ids,omitempty"`
+
+	// Inline confidence score (optional, 0.0-1.0)
+	Confidence *float64 `json:"confidence,omitempty" example:"0.85"`
+
+	// Inline artifact linking (optional)
+	InputArtifactIDs  []uuid.UUID `json:"input_artifact_ids,omitempty"`
+	OutputArtifactIDs []uuid.UUID `json:"output_artifact_ids,omitempty"`
 }
 
 // Hashable contains fields used for hash computation per RFC 8785

@@ -1,6 +1,6 @@
 basePath: /api/v1
 definitions:
-  actor.ActorResponse:
+  internal_actor.ActorResponse:
     description: Actor data returned by the API
     properties:
       external_id:
@@ -21,7 +21,7 @@ definitions:
         example: llm
         type: string
     type: object
-  actor.CreateRequest:
+  internal_actor.CreateRequest:
     properties:
       external_id:
         example: claude-opus-4
@@ -43,16 +43,85 @@ definitions:
     required:
     - type
     type: object
-  actor.ListResponse:
+  internal_actor.ListResponse:
     properties:
       actors:
         items:
-          $ref: '#/definitions/actor.ActorResponse'
+          $ref: '#/definitions/internal_actor.ActorResponse'
         type: array
       count:
         type: integer
     type: object
-  event.CreateResponse:
+  internal_artifact.ArtifactResponse:
+    description: Artifact data returned by the API
+    properties:
+      content_hash:
+        example: sha256:abc123...
+        type: string
+      content_type:
+        example: application/json
+        type: string
+      created_at:
+        example: "2024-01-15T10:00:00Z"
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      metadata:
+        type: object
+      scope_id:
+        example: 550e8400-e29b-41d4-a716-446655440001
+        type: string
+      uri:
+        example: s3://bucket/path/file.json
+        type: string
+    type: object
+  internal_artifact.CreateRequest:
+    properties:
+      content_hash:
+        example: sha256:abc123...
+        type: string
+      content_type:
+        example: application/json
+        type: string
+      metadata:
+        type: object
+      scope_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      uri:
+        example: s3://bucket/path/file.json
+        type: string
+    required:
+    - content_hash
+    - content_type
+    - scope_id
+    type: object
+  internal_artifact.LinkRequest:
+    properties:
+      artifact_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      role:
+        enum:
+        - input
+        - output
+        example: input
+        type: string
+    required:
+    - artifact_id
+    - role
+    type: object
+  internal_artifact.ListResponse:
+    properties:
+      artifacts:
+        items:
+          $ref: '#/definitions/internal_artifact.ArtifactResponse'
+        type: array
+      count:
+        type: integer
+    type: object
+  internal_event.CreateResponse:
     properties:
       message:
         example: Event queued for processing
@@ -61,7 +130,7 @@ definitions:
         example: accepted
         type: string
     type: object
-  event.EventResponse:
+  internal_event.EventResponse:
     description: Event data returned by the API
     properties:
       actor_id:
@@ -107,11 +176,15 @@ definitions:
         example: 1
         type: integer
     type: object
-  event.Input:
+  internal_event.Input:
     properties:
       actor_id:
         example: 550e8400-e29b-41d4-a716-446655440001
         type: string
+      confidence:
+        description: Inline confidence score (optional, 0.0-1.0)
+        example: 0.85
+        type: number
       correction_type:
         enum:
         - supersede
@@ -128,6 +201,11 @@ definitions:
       event_type_id:
         example: 550e8400-e29b-41d4-a716-446655440002
         type: string
+      input_artifact_ids:
+        description: Inline artifact linking (optional)
+        items:
+          type: string
+        type: array
       intent:
         enum:
         - exploration
@@ -140,6 +218,10 @@ definitions:
       observed_at:
         example: "2024-01-15T10:30:00Z"
         type: string
+      output_artifact_ids:
+        items:
+          type: string
+        type: array
       parent_event_ids:
         items:
           type: string
@@ -153,30 +235,30 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  event.LineageResponse:
+  internal_event.LineageResponse:
     properties:
       children:
         items:
-          $ref: '#/definitions/event.EventResponse'
+          $ref: '#/definitions/internal_event.EventResponse'
         type: array
       event_id:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
       parents:
         items:
-          $ref: '#/definitions/event.EventResponse'
+          $ref: '#/definitions/internal_event.EventResponse'
         type: array
     type: object
-  event.ListResponse:
+  internal_event.ListResponse:
     properties:
       count:
         type: integer
       events:
         items:
-          $ref: '#/definitions/event.EventResponse'
+          $ref: '#/definitions/internal_event.EventResponse'
         type: array
     type: object
-  eventtype.CreateRequest:
+  internal_eventtype.CreateRequest:
     properties:
       allowed_intents:
         example:
@@ -203,7 +285,7 @@ definitions:
     - name
     - version
     type: object
-  eventtype.EventTypeResponse:
+  internal_eventtype.EventTypeResponse:
     description: Event type data returned by the API
     properties:
       allowed_intents:
@@ -237,16 +319,16 @@ definitions:
         example: "1.0"
         type: string
     type: object
-  eventtype.ListResponse:
+  internal_eventtype.ListResponse:
     properties:
       count:
         type: integer
       event_types:
         items:
-          $ref: '#/definitions/eventtype.EventTypeResponse'
+          $ref: '#/definitions/internal_eventtype.EventTypeResponse'
         type: array
     type: object
-  health.Response:
+  internal_health.Response:
     properties:
       services:
         additionalProperties:
@@ -256,7 +338,7 @@ definitions:
         example: ok
         type: string
     type: object
-  scope.CreateRequest:
+  internal_scope.CreateRequest:
     properties:
       domain:
         example: payments
@@ -270,16 +352,16 @@ definitions:
     required:
     - project
     type: object
-  scope.ListResponse:
+  internal_scope.ListResponse:
     properties:
       count:
         type: integer
       scopes:
         items:
-          $ref: '#/definitions/scope.ScopeResponse'
+          $ref: '#/definitions/internal_scope.ScopeResponse'
         type: array
     type: object
-  scope.ScopeResponse:
+  internal_scope.ScopeResponse:
     description: Scope data returned by the API
     properties:
       created_at:
@@ -297,6 +379,70 @@ definitions:
       project:
         example: my-project
         type: string
+    type: object
+  internal_score.CreateRequest:
+    properties:
+      metadata:
+        type: object
+      reason:
+        example: High confidence based on training data coverage
+        type: string
+      scored_by:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      type:
+        enum:
+        - confidence
+        - relevance
+        - reliability
+        - agreement
+        example: confidence
+        type: string
+      value:
+        example: 0.85
+        type: number
+    required:
+    - type
+    - value
+    type: object
+  internal_score.ListResponse:
+    properties:
+      count:
+        type: integer
+      scores:
+        items:
+          $ref: '#/definitions/internal_score.ScoreResponse'
+        type: array
+    type: object
+  internal_score.ScoreResponse:
+    description: Score data returned by the API
+    properties:
+      category:
+        example: high
+        type: string
+      created_at:
+        example: "2024-01-15T10:00:00Z"
+        type: string
+      event_id:
+        example: 550e8400-e29b-41d4-a716-446655440001
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      metadata:
+        type: object
+      reason:
+        example: High confidence based on training data coverage
+        type: string
+      scored_by:
+        example: 550e8400-e29b-41d4-a716-446655440002
+        type: string
+      type:
+        example: confidence
+        type: string
+      value:
+        example: 0.85
+        type: number
     type: object
 host: localhost:8080
 info:
@@ -321,7 +467,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/actor.ListResponse'
+            $ref: '#/definitions/internal_actor.ListResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -341,14 +487,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/actor.CreateRequest'
+          $ref: '#/definitions/internal_actor.CreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/actor.ActorResponse'
+            $ref: '#/definitions/internal_actor.ActorResponse'
         "400":
           description: Bad Request
           schema:
@@ -380,7 +526,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/actor.ActorResponse'
+            $ref: '#/definitions/internal_actor.ActorResponse'
         "400":
           description: Bad Request
           schema:
@@ -396,6 +542,114 @@ paths:
       summary: Get an actor
       tags:
       - actors
+  /artifacts:
+    get:
+      description: List artifacts by scope, or find a specific artifact by scope and
+        content hash (for deduplication)
+      parameters:
+      - description: Scope ID
+        format: uuid
+        in: query
+        name: scope_id
+        required: true
+        type: string
+      - description: Content hash (if provided, returns single artifact)
+        in: query
+        name: content_hash
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: When content_hash is provided
+          schema:
+            $ref: '#/definitions/internal_artifact.ArtifactResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List or find artifacts
+      tags:
+      - artifacts
+    post:
+      consumes:
+      - application/json
+      description: Create a new artifact with content hash for deduplication
+      parameters:
+      - description: Artifact creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_artifact.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_artifact.ArtifactResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create an artifact
+      tags:
+      - artifacts
+  /artifacts/{id}:
+    get:
+      description: Get an artifact by ID
+      parameters:
+      - description: Artifact ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_artifact.ArtifactResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get an artifact
+      tags:
+      - artifacts
   /event-types:
     get:
       description: List all active event types
@@ -405,7 +659,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/eventtype.ListResponse'
+            $ref: '#/definitions/internal_eventtype.ListResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -425,14 +679,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/eventtype.CreateRequest'
+          $ref: '#/definitions/internal_eventtype.CreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/eventtype.EventTypeResponse'
+            $ref: '#/definitions/internal_eventtype.EventTypeResponse'
         "400":
           description: Bad Request
           schema:
@@ -464,7 +718,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/eventtype.EventTypeResponse'
+            $ref: '#/definitions/internal_eventtype.EventTypeResponse'
         "400":
           description: Bad Request
           schema:
@@ -496,7 +750,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/event.ListResponse'
+            $ref: '#/definitions/internal_event.ListResponse'
         "400":
           description: Bad Request
           schema:
@@ -523,14 +777,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/event.Input'
+          $ref: '#/definitions/internal_event.Input'
       produces:
       - application/json
       responses:
         "202":
           description: Accepted
           schema:
-            $ref: '#/definitions/event.CreateResponse'
+            $ref: '#/definitions/internal_event.CreateResponse'
         "400":
           description: Bad Request
           schema:
@@ -562,7 +816,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/event.EventResponse'
+            $ref: '#/definitions/internal_event.EventResponse'
         "400":
           description: Bad Request
           schema:
@@ -578,6 +832,79 @@ paths:
       summary: Get an event
       tags:
       - events
+  /events/{id}/artifacts:
+    get:
+      description: Get all artifacts linked to an event
+      parameters:
+      - description: Event ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_artifact.ListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get artifacts for event
+      tags:
+      - artifacts
+    post:
+      consumes:
+      - application/json
+      description: Link an existing artifact to an event as input or output
+      parameters:
+      - description: Event ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Link request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_artifact.LinkRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Link artifact to event
+      tags:
+      - artifacts
   /events/{id}/lineage:
     get:
       description: Get parent and child events for a given event
@@ -594,7 +921,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/event.LineageResponse'
+            $ref: '#/definitions/internal_event.LineageResponse'
         "400":
           description: Bad Request
           schema:
@@ -604,6 +931,87 @@ paths:
       summary: Get event lineage
       tags:
       - events
+  /events/{id}/scores:
+    get:
+      description: Get all scores for an event, optionally filtered by type
+      parameters:
+      - description: Event ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Filter by score type
+        enum:
+        - confidence
+        - relevance
+        - reliability
+        - agreement
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_score.ListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get scores for event
+      tags:
+      - scores
+    post:
+      consumes:
+      - application/json
+      description: Add a new score (confidence, relevance, reliability, agreement)
+        to an event
+      parameters:
+      - description: Event ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Score creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_score.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_score.ScoreResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Add score to event
+      tags:
+      - scores
   /health:
     get:
       description: Check the health of the API and its dependencies (Postgres, Kafka)
@@ -613,11 +1021,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/health.Response'
+            $ref: '#/definitions/internal_health.Response'
         "503":
           description: Service Unavailable
           schema:
-            $ref: '#/definitions/health.Response'
+            $ref: '#/definitions/internal_health.Response'
       summary: Health check
       tags:
       - health
@@ -630,7 +1038,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/scope.ListResponse'
+            $ref: '#/definitions/internal_scope.ListResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -650,14 +1058,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/scope.CreateRequest'
+          $ref: '#/definitions/internal_scope.CreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/scope.ScopeResponse'
+            $ref: '#/definitions/internal_scope.ScopeResponse'
         "400":
           description: Bad Request
           schema:
@@ -689,7 +1097,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/scope.ScopeResponse'
+            $ref: '#/definitions/internal_scope.ScopeResponse'
         "400":
           description: Bad Request
           schema:

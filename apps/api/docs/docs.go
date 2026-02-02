@@ -36,7 +36,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/actor.ListResponse"
+                            "$ref": "#/definitions/internal_actor.ListResponse"
                         }
                     },
                     "500": {
@@ -69,7 +69,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/actor.CreateRequest"
+                            "$ref": "#/definitions/internal_actor.CreateRequest"
                         }
                     }
                 ],
@@ -77,7 +77,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/actor.ActorResponse"
+                            "$ref": "#/definitions/internal_actor.ActorResponse"
                         }
                     },
                     "400": {
@@ -125,7 +125,168 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/actor.ActorResponse"
+                            "$ref": "#/definitions/internal_actor.ActorResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/artifacts": {
+            "get": {
+                "description": "List artifacts by scope, or find a specific artifact by scope and content hash (for deduplication)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "artifacts"
+                ],
+                "summary": "List or find artifacts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Scope ID",
+                        "name": "scope_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Content hash (if provided, returns single artifact)",
+                        "name": "content_hash",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "When content_hash is provided",
+                        "schema": {
+                            "$ref": "#/definitions/internal_artifact.ArtifactResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new artifact with content hash for deduplication",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "artifacts"
+                ],
+                "summary": "Create an artifact",
+                "parameters": [
+                    {
+                        "description": "Artifact creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_artifact.CreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/internal_artifact.ArtifactResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/artifacts/{id}": {
+            "get": {
+                "description": "Get an artifact by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "artifacts"
+                ],
+                "summary": "Get an artifact",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Artifact ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_artifact.ArtifactResponse"
                         }
                     },
                     "400": {
@@ -163,7 +324,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/eventtype.ListResponse"
+                            "$ref": "#/definitions/internal_eventtype.ListResponse"
                         }
                     },
                     "500": {
@@ -196,7 +357,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/eventtype.CreateRequest"
+                            "$ref": "#/definitions/internal_eventtype.CreateRequest"
                         }
                     }
                 ],
@@ -204,7 +365,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/eventtype.EventTypeResponse"
+                            "$ref": "#/definitions/internal_eventtype.EventTypeResponse"
                         }
                     },
                     "400": {
@@ -252,7 +413,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/eventtype.EventTypeResponse"
+                            "$ref": "#/definitions/internal_eventtype.EventTypeResponse"
                         }
                     },
                     "400": {
@@ -300,7 +461,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/event.ListResponse"
+                            "$ref": "#/definitions/internal_event.ListResponse"
                         }
                     },
                     "400": {
@@ -342,7 +503,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/event.Input"
+                            "$ref": "#/definitions/internal_event.Input"
                         }
                     }
                 ],
@@ -350,7 +511,7 @@ const docTemplate = `{
                     "202": {
                         "description": "Accepted",
                         "schema": {
-                            "$ref": "#/definitions/event.CreateResponse"
+                            "$ref": "#/definitions/internal_event.CreateResponse"
                         }
                     },
                     "400": {
@@ -398,7 +559,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/event.EventResponse"
+                            "$ref": "#/definitions/internal_event.EventResponse"
                         }
                     },
                     "400": {
@@ -412,6 +573,115 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/events/{id}/artifacts": {
+            "get": {
+                "description": "Get all artifacts linked to an event",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "artifacts"
+                ],
+                "summary": "Get artifacts for event",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_artifact.ListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Link an existing artifact to an event as input or output",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "artifacts"
+                ],
+                "summary": "Link artifact to event",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Link request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_artifact.LinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -446,11 +716,129 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/event.LineageResponse"
+                            "$ref": "#/definitions/internal_event.LineageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/events/{id}/scores": {
+            "get": {
+                "description": "Get all scores for an event, optionally filtered by type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scores"
+                ],
+                "summary": "Get scores for event",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "confidence",
+                            "relevance",
+                            "reliability",
+                            "agreement"
+                        ],
+                        "type": "string",
+                        "description": "Filter by score type",
+                        "name": "type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_score.ListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new score (confidence, relevance, reliability, agreement) to an event",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scores"
+                ],
+                "summary": "Add score to event",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Score creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_score.CreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/internal_score.ScoreResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -475,13 +863,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/health.Response"
+                            "$ref": "#/definitions/internal_health.Response"
                         }
                     },
                     "503": {
                         "description": "Service Unavailable",
                         "schema": {
-                            "$ref": "#/definitions/health.Response"
+                            "$ref": "#/definitions/internal_health.Response"
                         }
                     }
                 }
@@ -501,7 +889,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/scope.ListResponse"
+                            "$ref": "#/definitions/internal_scope.ListResponse"
                         }
                     },
                     "500": {
@@ -534,7 +922,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/scope.CreateRequest"
+                            "$ref": "#/definitions/internal_scope.CreateRequest"
                         }
                     }
                 ],
@@ -542,7 +930,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/scope.ScopeResponse"
+                            "$ref": "#/definitions/internal_scope.ScopeResponse"
                         }
                     },
                     "400": {
@@ -590,7 +978,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/scope.ScopeResponse"
+                            "$ref": "#/definitions/internal_scope.ScopeResponse"
                         }
                     },
                     "400": {
@@ -616,7 +1004,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "actor.ActorResponse": {
+        "internal_actor.ActorResponse": {
             "description": "Actor data returned by the API",
             "type": "object",
             "properties": {
@@ -645,7 +1033,7 @@ const docTemplate = `{
                 }
             }
         },
-        "actor.CreateRequest": {
+        "internal_actor.CreateRequest": {
             "type": "object",
             "required": [
                 "type"
@@ -675,13 +1063,13 @@ const docTemplate = `{
                 }
             }
         },
-        "actor.ListResponse": {
+        "internal_actor.ListResponse": {
             "type": "object",
             "properties": {
                 "actors": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/actor.ActorResponse"
+                        "$ref": "#/definitions/internal_actor.ActorResponse"
                     }
                 },
                 "count": {
@@ -689,7 +1077,104 @@ const docTemplate = `{
                 }
             }
         },
-        "event.CreateResponse": {
+        "internal_artifact.ArtifactResponse": {
+            "description": "Artifact data returned by the API",
+            "type": "object",
+            "properties": {
+                "content_hash": {
+                    "type": "string",
+                    "example": "sha256:abc123..."
+                },
+                "content_type": {
+                    "type": "string",
+                    "example": "application/json"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "metadata": {
+                    "type": "object"
+                },
+                "scope_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "uri": {
+                    "type": "string",
+                    "example": "s3://bucket/path/file.json"
+                }
+            }
+        },
+        "internal_artifact.CreateRequest": {
+            "type": "object",
+            "required": [
+                "content_hash",
+                "content_type",
+                "scope_id"
+            ],
+            "properties": {
+                "content_hash": {
+                    "type": "string",
+                    "example": "sha256:abc123..."
+                },
+                "content_type": {
+                    "type": "string",
+                    "example": "application/json"
+                },
+                "metadata": {
+                    "type": "object"
+                },
+                "scope_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "uri": {
+                    "type": "string",
+                    "example": "s3://bucket/path/file.json"
+                }
+            }
+        },
+        "internal_artifact.LinkRequest": {
+            "type": "object",
+            "required": [
+                "artifact_id",
+                "role"
+            ],
+            "properties": {
+                "artifact_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "input",
+                        "output"
+                    ],
+                    "example": "input"
+                }
+            }
+        },
+        "internal_artifact.ListResponse": {
+            "type": "object",
+            "properties": {
+                "artifacts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_artifact.ArtifactResponse"
+                    }
+                },
+                "count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_event.CreateResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -702,7 +1187,7 @@ const docTemplate = `{
                 }
             }
         },
-        "event.EventResponse": {
+        "internal_event.EventResponse": {
             "description": "Event data returned by the API",
             "type": "object",
             "properties": {
@@ -764,12 +1249,17 @@ const docTemplate = `{
                 }
             }
         },
-        "event.Input": {
+        "internal_event.Input": {
             "type": "object",
             "properties": {
                 "actor_id": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "confidence": {
+                    "description": "Inline confidence score (optional, 0.0-1.0)",
+                    "type": "number",
+                    "example": 0.85
                 },
                 "correction_type": {
                     "type": "string",
@@ -792,6 +1282,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440002"
                 },
+                "input_artifact_ids": {
+                    "description": "Inline artifact linking (optional)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "intent": {
                     "type": "string",
                     "enum": [
@@ -806,6 +1303,12 @@ const docTemplate = `{
                 "observed_at": {
                     "type": "string",
                     "example": "2024-01-15T10:30:00Z"
+                },
+                "output_artifact_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "parent_event_ids": {
                     "type": "array",
@@ -826,13 +1329,13 @@ const docTemplate = `{
                 }
             }
         },
-        "event.LineageResponse": {
+        "internal_event.LineageResponse": {
             "type": "object",
             "properties": {
                 "children": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/event.EventResponse"
+                        "$ref": "#/definitions/internal_event.EventResponse"
                     }
                 },
                 "event_id": {
@@ -842,12 +1345,12 @@ const docTemplate = `{
                 "parents": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/event.EventResponse"
+                        "$ref": "#/definitions/internal_event.EventResponse"
                     }
                 }
             }
         },
-        "event.ListResponse": {
+        "internal_event.ListResponse": {
             "type": "object",
             "properties": {
                 "count": {
@@ -856,12 +1359,12 @@ const docTemplate = `{
                 "events": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/event.EventResponse"
+                        "$ref": "#/definitions/internal_event.EventResponse"
                     }
                 }
             }
         },
-        "eventtype.CreateRequest": {
+        "internal_eventtype.CreateRequest": {
             "type": "object",
             "required": [
                 "name",
@@ -898,7 +1401,7 @@ const docTemplate = `{
                 }
             }
         },
-        "eventtype.EventTypeResponse": {
+        "internal_eventtype.EventTypeResponse": {
             "description": "Event type data returned by the API",
             "type": "object",
             "properties": {
@@ -944,7 +1447,7 @@ const docTemplate = `{
                 }
             }
         },
-        "eventtype.ListResponse": {
+        "internal_eventtype.ListResponse": {
             "type": "object",
             "properties": {
                 "count": {
@@ -953,12 +1456,12 @@ const docTemplate = `{
                 "event_types": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/eventtype.EventTypeResponse"
+                        "$ref": "#/definitions/internal_eventtype.EventTypeResponse"
                     }
                 }
             }
         },
-        "health.Response": {
+        "internal_health.Response": {
             "type": "object",
             "properties": {
                 "services": {
@@ -973,7 +1476,7 @@ const docTemplate = `{
                 }
             }
         },
-        "scope.CreateRequest": {
+        "internal_scope.CreateRequest": {
             "type": "object",
             "required": [
                 "project"
@@ -993,7 +1496,7 @@ const docTemplate = `{
                 }
             }
         },
-        "scope.ListResponse": {
+        "internal_scope.ListResponse": {
             "type": "object",
             "properties": {
                 "count": {
@@ -1002,12 +1505,12 @@ const docTemplate = `{
                 "scopes": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/scope.ScopeResponse"
+                        "$ref": "#/definitions/internal_scope.ScopeResponse"
                     }
                 }
             }
         },
-        "scope.ScopeResponse": {
+        "internal_scope.ScopeResponse": {
             "description": "Scope data returned by the API",
             "type": "object",
             "properties": {
@@ -1030,6 +1533,95 @@ const docTemplate = `{
                 "project": {
                     "type": "string",
                     "example": "my-project"
+                }
+            }
+        },
+        "internal_score.CreateRequest": {
+            "type": "object",
+            "required": [
+                "type",
+                "value"
+            ],
+            "properties": {
+                "metadata": {
+                    "type": "object"
+                },
+                "reason": {
+                    "type": "string",
+                    "example": "High confidence based on training data coverage"
+                },
+                "scored_by": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "confidence",
+                        "relevance",
+                        "reliability",
+                        "agreement"
+                    ],
+                    "example": "confidence"
+                },
+                "value": {
+                    "type": "number",
+                    "example": 0.85
+                }
+            }
+        },
+        "internal_score.ListResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "scores": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_score.ScoreResponse"
+                    }
+                }
+            }
+        },
+        "internal_score.ScoreResponse": {
+            "description": "Score data returned by the API",
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "example": "high"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
+                },
+                "event_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "metadata": {
+                    "type": "object"
+                },
+                "reason": {
+                    "type": "string",
+                    "example": "High confidence based on training data coverage"
+                },
+                "scored_by": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440002"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "confidence"
+                },
+                "value": {
+                    "type": "number",
+                    "example": 0.85
                 }
             }
         }

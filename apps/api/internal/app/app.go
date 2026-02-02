@@ -12,11 +12,13 @@ import (
 	"github.com/lineage/api/internal/app/db/sqlc"
 	"github.com/lineage/api/internal/app/kafka"
 	"github.com/lineage/api/internal/app/server"
+	"github.com/lineage/api/internal/artifact"
 	"github.com/lineage/api/internal/event"
 	"github.com/lineage/api/internal/eventtype"
 	"github.com/lineage/api/internal/health"
 	"github.com/lineage/api/internal/lineage"
 	"github.com/lineage/api/internal/scope"
+	"github.com/lineage/api/internal/score"
 )
 
 // App holds all application dependencies for the API server
@@ -74,6 +76,8 @@ func NewApp(ctx context.Context) (*App, error) {
 	eventTypeRepo := eventtype.NewRepository(queries)
 	eventRepo := event.NewRepository(queries)
 	lineageRepo := lineage.NewRepository(queries)
+	artifactRepo := artifact.NewRepository(queries)
+	scoreRepo := score.NewRepository(queries)
 
 	// Create handlers
 	healthHandler := health.NewHandler(db, cfg)
@@ -81,6 +85,8 @@ func NewApp(ctx context.Context) (*App, error) {
 	actorHandler := actor.NewHandler(actorRepo)
 	eventTypeHandler := eventtype.NewHandler(eventTypeRepo)
 	eventHandler := event.NewHandler(eventRepo, lineageRepo, eventTypeRepo, producer)
+	artifactHandler := artifact.NewHandler(artifactRepo)
+	scoreHandler := score.NewHandler(scoreRepo)
 
 	// Create router
 	router := server.NewRouter(server.Config{
@@ -89,6 +95,8 @@ func NewApp(ctx context.Context) (*App, error) {
 		ActorHandler:     actorHandler,
 		EventTypeHandler: eventTypeHandler,
 		EventHandler:     eventHandler,
+		ArtifactHandler:  artifactHandler,
+		ScoreHandler:     scoreHandler,
 	})
 
 	return &App{

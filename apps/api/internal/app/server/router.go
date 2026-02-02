@@ -6,10 +6,12 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/lineage/api/internal/actor"
+	"github.com/lineage/api/internal/artifact"
 	"github.com/lineage/api/internal/event"
 	"github.com/lineage/api/internal/eventtype"
 	"github.com/lineage/api/internal/health"
 	"github.com/lineage/api/internal/scope"
+	"github.com/lineage/api/internal/score"
 )
 
 type Config struct {
@@ -18,6 +20,8 @@ type Config struct {
 	ActorHandler     *actor.Handler
 	EventTypeHandler *eventtype.Handler
 	EventHandler     *event.Handler
+	ArtifactHandler  *artifact.Handler
+	ScoreHandler     *score.Handler
 }
 
 func NewRouter(cfg Config) *gin.Engine {
@@ -52,6 +56,19 @@ func NewRouter(cfg Config) *gin.Engine {
 		v1.GET("/events/:id", cfg.EventHandler.Get)
 		v1.GET("/events/:id/lineage", cfg.EventHandler.GetLineage)
 		v1.GET("/events", cfg.EventHandler.ListByScope)
+
+		// Event Scores
+		v1.POST("/events/:id/scores", cfg.ScoreHandler.Create)
+		v1.GET("/events/:id/scores", cfg.ScoreHandler.GetForEvent)
+
+		// Event Artifacts (linked to events)
+		v1.GET("/events/:id/artifacts", cfg.ArtifactHandler.GetForEvent)
+		v1.POST("/events/:id/artifacts", cfg.ArtifactHandler.LinkToEvent)
+
+		// Artifacts
+		v1.POST("/artifacts", cfg.ArtifactHandler.Create)
+		v1.GET("/artifacts/:id", cfg.ArtifactHandler.Get)
+		v1.GET("/artifacts", cfg.ArtifactHandler.List)
 	}
 
 	return r
