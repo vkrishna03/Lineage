@@ -61,12 +61,18 @@ Visit http://localhost:8080/swagger/index.html for API docs.
 
 ## Examples
 
+### Python
 | Example | Description |
 |---------|-------------|
 | [pricing-decision-py](./examples/pricing-decision-py) | Basic pricing workflow with multiple actors |
 | [langgraph-support-py](./examples/langgraph-support-py) | LangGraph customer support agent with human escalation |
 | [rag-legal-py](./examples/rag-legal-py) | RAG pipeline for legal documents with provenance |
 | [fastapi-service-py](./examples/fastapi-service-py) | FastAPI service with approval workflow |
+
+### TypeScript
+| Example | Description |
+|---------|-------------|
+| [pricing-decision-ts](./examples/pricing-decision-ts) | Basic pricing workflow (TypeScript) |
 
 ## Architecture
 

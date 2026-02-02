@@ -112,12 +112,12 @@ class LegalRAGPipeline:
 
     def __init__(self, base_url: str = "http://localhost:8080"):
         self.base_url = base_url
-        self.vector_store: Optional[Chroma] = None
+        self.vector_store = None
         self.ingested_docs: dict[str, str] = {}  # doc_id -> event_id
 
-    async def initialize(self):
+    def initialize(self):
         """Initialize Lineage and vector store."""
-        await lineage.init(
+        lineage.init(
             project="legal-rag",
             domain="compliance",
             environment="demo",
@@ -136,7 +136,7 @@ class LegalRAGPipeline:
         else:
             self.vector_store = MockVectorStore(LEGAL_DOCUMENTS)
 
-    async def ingest_document(self, doc: dict) -> str:
+    def ingest_document(self, doc: dict) -> str:
         """Ingest a document and track with Lineage."""
         content_hash = compute_hash(doc["content"])
 
@@ -156,7 +156,7 @@ class LegalRAGPipeline:
         )
 
         # Add to vector store
-        if HAS_OPENAI and isinstance(self.vector_store, Chroma):
+        if HAS_OPENAI and hasattr(self.vector_store, 'add_texts'):
             self.vector_store.add_texts(
                 texts=[doc["content"]],
                 metadatas=[{"id": doc["id"], "title": doc["title"]}],
@@ -169,7 +169,7 @@ class LegalRAGPipeline:
 
         return event_id
 
-    async def retrieve_relevant_docs(self, query: str, case_id: str) -> tuple[list[dict], str]:
+    def retrieve_relevant_docs(self, query: str, case_id: str) -> tuple[list[dict], str]:
         """Retrieve relevant documents and track retrieval."""
         # Perform similarity search
         results = self.vector_store.similarity_search(query, k=3)
@@ -206,7 +206,7 @@ class LegalRAGPipeline:
 
         return retrieved_docs, event_id
 
-    async def generate_analysis(
+    def generate_analysis(
         self,
         query: str,
         docs: list[dict],
@@ -282,7 +282,7 @@ Be concise and cite specific documents."""
 
         return analysis, event_id
 
-    async def lawyer_review(
+    def lawyer_review(
         self,
         analysis: dict,
         analysis_event_id: str,
@@ -316,7 +316,7 @@ Be concise and cite specific documents."""
 
         return decision, event_id
 
-    async def execute_recommendation(
+    def execute_recommendation(
         self,
         decision: dict,
         decision_event_id: str,
@@ -347,20 +347,20 @@ Be concise and cite specific documents."""
         return event_id
 
 
-async def main():
+def main():
     """Run the RAG legal analysis demo."""
     print("\n" + "=" * 60)
     print("Legal RAG Pipeline with Lineage Tracking")
     print("=" * 60)
 
     pipeline = LegalRAGPipeline()
-    await pipeline.initialize()
+    pipeline.initialize()
 
     # Phase 1: Ingest documents
     print("\n[Phase 1] Document Ingestion")
     print("-" * 40)
     for doc in LEGAL_DOCUMENTS:
-        await pipeline.ingest_document(doc)
+        pipeline.ingest_document(doc)
 
     # Phase 2: Process a legal query
     case_id = "CASE-2024-001"
@@ -374,19 +374,19 @@ async def main():
     # Retrieve relevant documents
     print("\n[Phase 3] Document Retrieval")
     print("-" * 40)
-    docs, retrieval_event_id = await pipeline.retrieve_relevant_docs(query, case_id)
+    docs, retrieval_event_id = pipeline.retrieve_relevant_docs(query, case_id)
 
     # Generate AI analysis
     print("\n[Phase 4] AI Analysis")
     print("-" * 40)
-    analysis, analysis_event_id = await pipeline.generate_analysis(
+    analysis, analysis_event_id = pipeline.generate_analysis(
         query, docs, case_id, retrieval_event_id
     )
 
     # Lawyer review
     print("\n[Phase 5] Lawyer Review")
     print("-" * 40)
-    decision, decision_event_id = await pipeline.lawyer_review(
+    decision, decision_event_id = pipeline.lawyer_review(
         analysis,
         analysis_event_id,
         approved=True,
@@ -396,7 +396,7 @@ async def main():
     # Execute recommendation
     print("\n[Phase 6] Execute Recommendation")
     print("-" * 40)
-    await pipeline.execute_recommendation(decision, decision_event_id)
+    pipeline.execute_recommendation(decision, decision_event_id)
 
     # Summary
     print("\n" + "=" * 60)
@@ -420,5 +420,4 @@ Query: GET /api/v1/events?scope_id=<scope_id>
 
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()

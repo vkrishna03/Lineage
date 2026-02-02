@@ -1,0 +1,19 @@
+{
+  "name": "pricing-decision-ts-example",
+  "version": "0.1.0",
+  "description": "Pricing workflow example with Lineage tracking (TypeScript)",
+  "type": "module",
+  "scripts": {
+    "start": "tsx main.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lineage-sdk": "file:../../sdks/typescript"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

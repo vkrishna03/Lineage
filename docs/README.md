@@ -20,10 +20,14 @@ Detailed documentation for the Lineage project.
 
 ## Examples
 
+### Python
 - [pricing-decision-py](../examples/pricing-decision-py) - Basic pricing workflow
 - [langgraph-support-py](../examples/langgraph-support-py) - LangGraph customer support agent
 - [rag-legal-py](../examples/rag-legal-py) - RAG pipeline for legal documents
 - [fastapi-service-py](../examples/fastapi-service-py) - FastAPI service with approval workflow
+
+### TypeScript
+- [pricing-decision-ts](../examples/pricing-decision-ts) - Basic pricing workflow
 
 ## Additional Resources
 
