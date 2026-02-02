@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/lineage/api/internal/domain"
+	"github.com/lineage/api/internal/event"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -26,14 +26,14 @@ func NewProducer(brokers []string, topic string) *Producer {
 }
 
 // ProduceEvent sends an event to Kafka, partitioned by scope_id
-func (p *Producer) ProduceEvent(ctx context.Context, event domain.EventInput) error {
-	value, err := json.Marshal(event)
+func (p *Producer) ProduceEvent(ctx context.Context, input event.Input) error {
+	value, err := json.Marshal(input)
 	if err != nil {
 		return err
 	}
 
 	// Use scope_id as partition key to ensure ordering within a scope
-	key := event.ScopeID[:]
+	key := input.ScopeID[:]
 
 	return p.writer.WriteMessages(ctx, kafka.Message{
 		Key:   key,
@@ -42,8 +42,8 @@ func (p *Producer) ProduceEvent(ctx context.Context, event domain.EventInput) er
 }
 
 // ProduceEventWithKey sends an event with a custom partition key
-func (p *Producer) ProduceEventWithKey(ctx context.Context, key uuid.UUID, event domain.EventInput) error {
-	value, err := json.Marshal(event)
+func (p *Producer) ProduceEventWithKey(ctx context.Context, key uuid.UUID, input event.Input) error {
+	value, err := json.Marshal(input)
 	if err != nil {
 		return err
 	}

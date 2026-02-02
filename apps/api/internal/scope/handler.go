@@ -1,34 +1,33 @@
-package handler
+package scope
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lineage/api/internal/db/sqlc"
+	"github.com/lineage/api/internal/app/db/sqlc"
 )
 
-type ScopesHandler struct {
-	db      *pgxpool.Pool
-	queries *sqlc.Queries
+// Handler handles HTTP requests for scopes
+type Handler struct {
+	repo *Repository
 }
 
-func NewScopesHandler(db *pgxpool.Pool) *ScopesHandler {
-	return &ScopesHandler{
-		db:      db,
-		queries: sqlc.New(db),
-	}
+// NewHandler creates a new scope handler
+func NewHandler(repo *Repository) *Handler {
+	return &Handler{repo: repo}
 }
 
-type CreateScopeRequest struct {
+// CreateRequest represents the request body for creating a scope
+type CreateRequest struct {
 	Project     string  `json:"project" binding:"required"`
 	Domain      *string `json:"domain"`
 	Environment *string `json:"environment"`
 }
 
-func (h *ScopesHandler) CreateScope(c *gin.Context) {
-	var req CreateScopeRequest
+// Create handles POST /scopes
+func (h *Handler) Create(c *gin.Context) {
+	var req CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -40,7 +39,7 @@ func (h *ScopesHandler) CreateScope(c *gin.Context) {
 		Environment: req.Environment,
 	}
 
-	scope, err := h.queries.CreateScope(c.Request.Context(), params)
+	scope, err := h.repo.Create(c.Request.Context(), params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create scope"})
 		return
@@ -49,7 +48,8 @@ func (h *ScopesHandler) CreateScope(c *gin.Context) {
 	c.JSON(http.StatusCreated, scope)
 }
 
-func (h *ScopesHandler) GetScope(c *gin.Context) {
+// Get handles GET /scopes/:id
+func (h *Handler) Get(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -57,7 +57,7 @@ func (h *ScopesHandler) GetScope(c *gin.Context) {
 		return
 	}
 
-	scope, err := h.queries.GetScope(c.Request.Context(), id)
+	scope, err := h.repo.GetByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "scope not found"})
 		return
@@ -66,8 +66,9 @@ func (h *ScopesHandler) GetScope(c *gin.Context) {
 	c.JSON(http.StatusOK, scope)
 }
 
-func (h *ScopesHandler) ListScopes(c *gin.Context) {
-	scopes, err := h.queries.ListScopes(c.Request.Context())
+// List handles GET /scopes
+func (h *Handler) List(c *gin.Context) {
+	scopes, err := h.repo.List(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list scopes"})
 		return

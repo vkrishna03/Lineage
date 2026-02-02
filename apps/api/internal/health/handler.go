@@ -1,32 +1,37 @@
-package handler
+package health
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/lineage/api/internal/app/config"
 	"github.com/segmentio/kafka-go"
 )
 
-type HealthHandler struct {
+// Handler handles health check requests
+type Handler struct {
 	db           *pgxpool.Pool
 	kafkaBrokers []string
 }
 
-func NewHealthHandler(db *pgxpool.Pool, kafkaBrokers []string) *HealthHandler {
-	return &HealthHandler{
+// NewHandler creates a new health handler
+func NewHandler(db *pgxpool.Pool, cfg *config.Config) *Handler {
+	return &Handler{
 		db:           db,
-		kafkaBrokers: kafkaBrokers,
+		kafkaBrokers: cfg.KafkaBrokers,
 	}
 }
 
-type HealthResponse struct {
+// Response represents the health check response
+type Response struct {
 	Status   string            `json:"status"`
 	Services map[string]string `json:"services"`
 }
 
-func (h *HealthHandler) Health(c *gin.Context) {
-	resp := HealthResponse{
+// Check handles GET /health
+func (h *Handler) Check(c *gin.Context) {
+	resp := Response{
 		Status:   "ok",
 		Services: make(map[string]string),
 	}
@@ -40,13 +45,15 @@ func (h *HealthHandler) Health(c *gin.Context) {
 	}
 
 	// Check Kafka connectivity
-	conn, err := kafka.Dial("tcp", h.kafkaBrokers[0])
-	if err != nil {
-		resp.Status = "degraded"
-		resp.Services["kafka"] = "error: " + err.Error()
-	} else {
-		conn.Close()
-		resp.Services["kafka"] = "ok"
+	if len(h.kafkaBrokers) > 0 {
+		conn, err := kafka.Dial("tcp", h.kafkaBrokers[0])
+		if err != nil {
+			resp.Status = "degraded"
+			resp.Services["kafka"] = "error: " + err.Error()
+		} else {
+			conn.Close()
+			resp.Services["kafka"] = "ok"
+		}
 	}
 
 	statusCode := http.StatusOK

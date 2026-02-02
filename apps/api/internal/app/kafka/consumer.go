@@ -9,8 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lineage/api/internal/db/sqlc"
-	"github.com/lineage/api/internal/domain"
+	"github.com/lineage/api/internal/app/db/sqlc"
+	"github.com/lineage/api/internal/event"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/segmentio/kafka-go"
 )
@@ -67,18 +67,18 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 // processMessage handles a single Kafka message
 func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) error {
-	var input domain.EventInput
+	var input event.Input
 	if err := json.Unmarshal(msg.Value, &input); err != nil {
 		return fmt.Errorf("failed to unmarshal event: %w", err)
 	}
 
 	// Validate intent
-	if !domain.ValidateIntent(input.Intent) {
+	if !event.ValidateIntent(input.Intent) {
 		return fmt.Errorf("invalid intent: %s", input.Intent)
 	}
 
 	// Validate correction type if present
-	if input.CorrectionType != nil && !domain.ValidateCorrectionType(*input.CorrectionType) {
+	if input.CorrectionType != nil && !event.ValidateCorrectionType(*input.CorrectionType) {
 		return fmt.Errorf("invalid correction type: %s", *input.CorrectionType)
 	}
 
@@ -110,7 +110,7 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) error 
 	}
 
 	// Compute event hash using RFC 8785 canonical JSON
-	hashable := domain.HashableEvent{
+	hashable := event.Hashable{
 		ScopeID:         input.ScopeID,
 		ActorID:         input.ActorID,
 		EventTypeID:     input.EventTypeID,
@@ -124,7 +124,7 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) error 
 		Payload:         input.Payload,
 	}
 
-	eventHash, err := domain.ComputeEventHash(hashable)
+	eventHash, err := event.ComputeHash(hashable)
 	if err != nil {
 		return fmt.Errorf("failed to compute event hash: %w", err)
 	}

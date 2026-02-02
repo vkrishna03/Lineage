@@ -1,4 +1,4 @@
-package domain
+package event
 
 import (
 	"crypto/sha256"
@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// EventInput represents the data sent by producers to create an event
-type EventInput struct {
+// Input represents the data sent by producers to create an event
+type Input struct {
 	ScopeID          uuid.UUID       `json:"scope_id"`
 	ActorID          uuid.UUID       `json:"actor_id"`
 	EventTypeID      uuid.UUID       `json:"event_type_id"`
@@ -22,12 +22,12 @@ type EventInput struct {
 	ObservedAt       *time.Time      `json:"observed_at,omitempty"`
 	DecidedAt        *time.Time      `json:"decided_at,omitempty"`
 	Payload          json.RawMessage `json:"payload"`
-	ParentEventIDs   []uuid.UUID     `json:"parent_event_ids,omitempty"` // For lineage
+	ParentEventIDs   []uuid.UUID     `json:"parent_event_ids,omitempty"`
 }
 
-// HashableEvent contains fields used for hash computation per RFC 8785
+// Hashable contains fields used for hash computation per RFC 8785
 // Excluded: id, ingested_at, prev_event_hash, event_hash (assigned at write time)
-type HashableEvent struct {
+type Hashable struct {
 	ScopeID         uuid.UUID       `json:"scope_id"`
 	ActorID         uuid.UUID       `json:"actor_id"`
 	EventTypeID     uuid.UUID       `json:"event_type_id"`
@@ -41,21 +41,18 @@ type HashableEvent struct {
 	Payload         json.RawMessage `json:"payload"`
 }
 
-// ComputeEventHash computes SHA-256 hash of canonical JSON (RFC 8785)
-func ComputeEventHash(event HashableEvent) (string, error) {
-	// Marshal to JSON
+// ComputeHash computes SHA-256 hash of canonical JSON (RFC 8785)
+func ComputeHash(event Hashable) (string, error) {
 	jsonBytes, err := json.Marshal(event)
 	if err != nil {
 		return "", err
 	}
 
-	// Canonicalize using RFC 8785 (JCS)
 	canonical, err := jsoncanonicalizer.Transform(jsonBytes)
 	if err != nil {
 		return "", err
 	}
 
-	// SHA-256 hash
 	hash := sha256.Sum256(canonical)
 	return hex.EncodeToString(hash[:]), nil
 }
@@ -72,12 +69,6 @@ const (
 )
 
 // DeriveScoreCategory derives category from numeric value (0.0-1.0)
-// Default thresholds:
-//   - very_low:  0.00 – 0.19
-//   - low:       0.20 – 0.39
-//   - moderate:  0.40 – 0.59
-//   - high:      0.60 – 0.79
-//   - very_high: 0.80 – 1.00
 func DeriveScoreCategory(value float64) ScoreCategory {
 	switch {
 	case value < 0.20:

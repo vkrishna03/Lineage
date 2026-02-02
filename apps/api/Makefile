@@ -1,4 +1,4 @@
-.PHONY: run-api run-consumer build sqlc migrate-up migrate-down migrate-create kafka-topics test lint
+.PHONY: run-api run-consumer build sqlc wire generate migrate-up migrate-down migrate-create kafka-topics test lint tidy clean help
 
 # Load .env file if it exists
 ifneq (,$(wildcard .env))
@@ -22,13 +22,20 @@ run-consumer:
 	go run ./cmd/consumer
 
 # Build both binaries
-build:
+build: generate
 	go build -o bin/api ./cmd/api
 	go build -o bin/consumer ./cmd/consumer
 
 # Generate SQLC code
 sqlc:
 	sqlc generate
+
+# Generate Wire DI code
+wire:
+	wire ./internal/wire
+
+# Generate all (SQLC + Wire)
+generate: sqlc wire
 
 # Run database migrations up
 migrate-up:
@@ -74,6 +81,12 @@ tidy:
 clean:
 	rm -rf bin/
 
+# Install dev tools
+tools:
+	go install github.com/google/wire/cmd/wire@latest
+	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
 # Show help
 help:
 	@echo "Available targets:"
@@ -81,6 +94,8 @@ help:
 	@echo "  run-consumer   - Run the Kafka consumer"
 	@echo "  build          - Build both binaries"
 	@echo "  sqlc           - Generate SQLC code"
+	@echo "  wire           - Generate Wire DI code"
+	@echo "  generate       - Generate all code (SQLC + Wire)"
 	@echo "  migrate-up     - Run all pending migrations"
 	@echo "  migrate-down   - Rollback all migrations"
 	@echo "  migrate-create - Create a new migration (name=xxx)"
@@ -88,4 +103,5 @@ help:
 	@echo "  test           - Run tests"
 	@echo "  lint           - Run linter"
 	@echo "  tidy           - Tidy Go modules"
+	@echo "  tools          - Install dev tools (wire, sqlc, migrate)"
 	@echo "  clean          - Clean build artifacts"
