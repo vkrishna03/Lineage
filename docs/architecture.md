@@ -59,6 +59,39 @@ Lineage is an append-only event store with hash-chaining for tracking AI decisio
 - **Actor**: Who performed the action (human, LLM, agent, service, tool)
 - **Event Type**: Schema for event payloads
 - **Event**: Immutable record with hash chain
+- **Artifact**: Content-addressed data (inputs/outputs)
+- **Score**: Numeric assessments (confidence, relevance, reliability, agreement)
+
+### Artifacts
+
+Artifacts represent data consumed or produced by events:
+- Content-addressed via SHA-256 hash for deduplication
+- Linked to events with role (`input` or `output`)
+- Supports any content type with optional URI for storage location
+
+```
+┌─────────────┐       ┌─────────────────┐       ┌─────────────┐
+│  Artifact   │◄─────▶│  EventArtifact  │◄─────▶│   Event     │
+│             │       │  (role: in/out) │       │             │
+└─────────────┘       └─────────────────┘       └─────────────┘
+```
+
+### Scores
+
+Scores quantify aspects of events:
+- **Types**: confidence, relevance, reliability, agreement
+- **Value**: 0.0 to 1.0
+- **Category**: Auto-derived (very_low, low, moderate, high, very_high)
+- Optional: scored_by (actor), reason, metadata
+
+```
+Value Range    Category
+0.00 - 0.19    very_low
+0.20 - 0.39    low
+0.40 - 0.59    moderate
+0.60 - 0.79    high
+0.80 - 1.00    very_high
+```
 
 ### Hash Chaining
 
@@ -80,10 +113,12 @@ Lineage/
 │       └── internal/
 │           ├── app/            # Infrastructure (config, db, kafka)
 │           ├── actor/          # Actor feature
+│           ├── artifact/       # Artifact feature
 │           ├── event/          # Event feature
 │           ├── eventtype/      # Event type feature
 │           ├── health/         # Health checks
 │           ├── lineage/        # Lineage relationships
+│           ├── score/          # Score feature
 │           └── scope/          # Scope feature
 ├── docs/                       # Project documentation
 ├── infra/                      # Infrastructure configs
