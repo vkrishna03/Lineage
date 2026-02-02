@@ -1,0 +1,15 @@
+[project]
+name = "langgraph-support-example"
+version = "0.1.0"
+description = "LangGraph customer support agent with Lineage tracking"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "lineage-sdk",
+    "langgraph>=0.2.0",
+    "langchain-openai>=0.2.0",
+    "langchain-core>=0.3.0",
+]
+
+[tool.uv.sources]
+lineage-sdk = { path = "../../sdks/python" }
