@@ -6,6 +6,8 @@ Detailed documentation for the Lineage project.
 
 | Document | Description |
 |----------|-------------|
+| [PRD](./prd.md) | Product requirements and vision |
+| [Concepts](./concepts.md) | Core concepts and terminology |
 | [Architecture](./architecture.md) | System design, components, data model |
 | [Getting Started](./getting-started.md) | Local setup and development |
 | [API Reference](./api.md) | REST endpoints and OpenAPI spec |
