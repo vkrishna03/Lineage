@@ -1,0 +1,15 @@
+[project]
+name = "rag-legal-example"
+version = "0.1.0"
+description = "RAG pipeline for legal documents with Lineage tracking"
+requires-python = ">=3.10"
+dependencies = [
+    "lineage-sdk",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-community>=0.3.0",
+    "chromadb>=0.5.0",
+]
+
+[tool.uv.sources]
+lineage-sdk = { path = "../../sdks/python" }

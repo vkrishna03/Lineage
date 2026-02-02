@@ -65,6 +65,8 @@ Visit http://localhost:8080/swagger/index.html for API docs.
 |---------|-------------|
 | [pricing-decision-py](./examples/pricing-decision-py) | Basic pricing workflow with multiple actors |
 | [langgraph-support-py](./examples/langgraph-support-py) | LangGraph customer support agent with human escalation |
+| [rag-legal-py](./examples/rag-legal-py) | RAG pipeline for legal documents with provenance |
+| [fastapi-service-py](./examples/fastapi-service-py) | FastAPI service with approval workflow |
 
 ## Architecture
 
