@@ -2,7 +2,7 @@
 name = "rag-legal-example"
 version = "0.1.0"
 description = "RAG pipeline for legal documents with Lineage tracking"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "lineage-sdk",
     "langchain>=0.3.0",
