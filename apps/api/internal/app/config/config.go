@@ -8,18 +8,34 @@ import (
 )
 
 type Config struct {
-	DatabaseURL  string
-	KafkaBrokers []string
-	KafkaTopic   string
-	Port         string
+	DatabaseURL string
+	Port        string
+
+	// Kafka
+	KafkaBrokers  []string
+	KafkaTopic    string
+	KafkaGroupID  string
+
+	// Kafka SASL (for Aiven)
+	KafkaSASLEnabled  bool
+	KafkaSASLUsername string
+	KafkaSASLPassword string
 }
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		DatabaseURL:  os.Getenv("DATABASE_URL"),
+		DatabaseURL: os.Getenv("DATABASE_URL"),
+		Port:        getEnvOrDefault("PORT", "8080"),
+
+		// Kafka
 		KafkaBrokers: strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
 		KafkaTopic:   getEnvOrDefault("KAFKA_TOPIC", "lineage.events"),
-		Port:         getEnvOrDefault("PORT", "8080"),
+		KafkaGroupID: getEnvOrDefault("KAFKA_GROUP_ID", "lineage-consumer-group"),
+
+		// Kafka SASL
+		KafkaSASLEnabled:  getEnvOrDefault("KAFKA_SASL_ENABLED", "false") == "true",
+		KafkaSASLUsername: os.Getenv("KAFKA_SASL_USERNAME"),
+		KafkaSASLPassword: os.Getenv("KAFKA_SASL_PASSWORD"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -28,6 +44,13 @@ func Load() (*Config, error) {
 
 	if len(cfg.KafkaBrokers) == 0 || cfg.KafkaBrokers[0] == "" {
 		cfg.KafkaBrokers = []string{"localhost:9092"}
+	}
+
+	// Validate SASL config if enabled
+	if cfg.KafkaSASLEnabled {
+		if cfg.KafkaSASLUsername == "" || cfg.KafkaSASLPassword == "" {
+			return nil, fmt.Errorf("KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD are required when KAFKA_SASL_ENABLED=true")
+		}
 	}
 
 	return cfg, nil

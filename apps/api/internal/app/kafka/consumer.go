@@ -3,6 +3,7 @@ package kafka
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"github.com/lineage/api/internal/event"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl/scram"
 )
 
 // Consumer processes events from Kafka and writes to Postgres
@@ -22,19 +24,45 @@ type Consumer struct {
 	queries *sqlc.Queries
 }
 
+// ConsumerConfig holds configuration for creating a consumer
+type ConsumerConfig struct {
+	Brokers      []string
+	Topic        string
+	GroupID      string
+	SASLEnabled  bool
+	SASLUsername string
+	SASLPassword string
+}
+
 // NewConsumer creates a new Kafka consumer
-func NewConsumer(brokers []string, topic, groupID string, db *pgxpool.Pool) *Consumer {
+func NewConsumer(cfg ConsumerConfig, db *pgxpool.Pool) (*Consumer, error) {
+	readerCfg := kafka.ReaderConfig{
+		Brokers:  cfg.Brokers,
+		Topic:    cfg.Topic,
+		GroupID:  cfg.GroupID,
+		MinBytes: 1,
+		MaxBytes: 10e6, // 10MB
+	}
+
+	// Configure SASL if enabled (for Aiven)
+	if cfg.SASLEnabled {
+		mechanism, err := scram.Mechanism(scram.SHA256, cfg.SASLUsername, cfg.SASLPassword)
+		if err != nil {
+			return nil, err
+		}
+
+		dialer := &kafka.Dialer{
+			SASLMechanism: mechanism,
+			TLS:           &tls.Config{}, // Aiven requires TLS
+		}
+		readerCfg.Dialer = dialer
+	}
+
 	return &Consumer{
-		reader: kafka.NewReader(kafka.ReaderConfig{
-			Brokers:  brokers,
-			Topic:    topic,
-			GroupID:  groupID,
-			MinBytes: 1,
-			MaxBytes: 10e6, // 10MB
-		}),
+		reader:  kafka.NewReader(readerCfg),
 		db:      db,
 		queries: sqlc.New(db),
-	}
+	}, nil
 }
 
 // Start begins consuming messages from Kafka
@@ -159,7 +187,7 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) error 
 		insertParams.DecidedAt = pgtype.Timestamptz{Time: *input.DecidedAt, Valid: true}
 	}
 
-	event, err := c.queries.InsertEvent(ctx, insertParams)
+	evt, err := c.queries.InsertEvent(ctx, insertParams)
 	if err != nil {
 		return fmt.Errorf("failed to insert event: %w", err)
 	}
@@ -168,7 +196,7 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) error 
 	for _, parentID := range input.ParentEventIDs {
 		_, err := c.queries.CreateLineage(ctx, sqlc.CreateLineageParams{
 			ParentEventID: parentID,
-			ChildEventID:  event.ID,
+			ChildEventID:  evt.ID,
 			Relationship:  "derived_from",
 		})
 		if err != nil {
@@ -176,7 +204,7 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) error 
 		}
 	}
 
-	log.Printf("Processed event: id=%s scope_sequence=%d hash=%s", event.ID, event.ScopeSequence, event.EventHash)
+	log.Printf("Processed event: id=%s scope_sequence=%d hash=%s", evt.ID, evt.ScopeSequence, evt.EventHash)
 	return nil
 }
 

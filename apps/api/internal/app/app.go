@@ -52,7 +52,17 @@ func NewApp(ctx context.Context) (*App, error) {
 	queries := sqlc.New(db)
 
 	// Create Kafka producer
-	producer := kafka.NewProducer(cfg.KafkaBrokers, cfg.KafkaTopic)
+	producer, err := kafka.NewProducer(kafka.ProducerConfig{
+		Brokers:      cfg.KafkaBrokers,
+		Topic:        cfg.KafkaTopic,
+		SASLEnabled:  cfg.KafkaSASLEnabled,
+		SASLUsername: cfg.KafkaSASLUsername,
+		SASLPassword: cfg.KafkaSASLPassword,
+	})
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to create kafka producer: %w", err)
+	}
 
 	// Create repositories
 	scopeRepo := scope.NewRepository(queries)
@@ -100,7 +110,18 @@ func NewConsumerApp(ctx context.Context) (*ConsumerApp, error) {
 	}
 
 	// Create Kafka consumer
-	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopic, "lineage-consumer-group", db)
+	consumer, err := kafka.NewConsumer(kafka.ConsumerConfig{
+		Brokers:      cfg.KafkaBrokers,
+		Topic:        cfg.KafkaTopic,
+		GroupID:      cfg.KafkaGroupID,
+		SASLEnabled:  cfg.KafkaSASLEnabled,
+		SASLUsername: cfg.KafkaSASLUsername,
+		SASLPassword: cfg.KafkaSASLPassword,
+	}, db)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to create kafka consumer: %w", err)
+	}
 
 	return &ConsumerApp{
 		Config:   cfg,
