@@ -1,0 +1,10 @@
+[project]
+name = "pricing-decision-example"
+version = "0.1.0"
+description = "AI-Assisted Pricing Decision workflow example from PRD"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["lineage-sdk"]
+
+[tool.uv.sources]
+lineage-sdk = { path = "../../sdks/python" }
