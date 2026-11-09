@@ -453,8 +453,8 @@ info:
     Epistemic Transparency & Event Lineage System API
     An append-only event store with hash-chaining for AI decision tracking
   license:
-    name: Elastic License 2.0
-    url: https://www.elastic.co/licensing/elastic-license
+    name: GNU AGPL v3.0
+    url: https://www.gnu.org/licenses/agpl-3.0.html
   title: Lineage API
   version: "1.0"
 paths:

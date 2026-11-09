@@ -14,8 +14,8 @@ const docTemplate = `{
             "url": "https://github.com/vkrishna03/Lineage"
         },
         "license": {
-            "name": "Elastic License 2.0",
-            "url": "https://www.elastic.co/licensing/elastic-license"
+            "name": "GNU AGPL v3.0",
+            "url": "https://www.gnu.org/licenses/agpl-3.0.html"
         },
         "version": "{{.Version}}"
     },

@@ -15,8 +15,8 @@ Detailed documentation for the Lineage project.
 
 ## SDKs
 
-- [Python SDK](../sdks/python) - `pip install lineage-sdk`
-- [TypeScript SDK](../sdks/typescript) - `npm install lineage-sdk`
+- [Python SDK](../sdks/python) - install from this repo (not on PyPI)
+- [TypeScript SDK](../sdks/typescript) - build from this repo (not on npm)
 
 ## Examples
 
