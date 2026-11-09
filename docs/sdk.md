@@ -15,10 +15,12 @@ Lineage provides SDKs for Python and TypeScript, plus direct API access via curl
 
 ### Installation
 
+Not published to PyPI (the `lineage-sdk` name there belongs to an unrelated project). Install from this repo:
+
 ```bash
-pip install lineage-sdk
+pip install "git+https://github.com/vkrishna03/Lineage.git#subdirectory=sdks/python"
 # or with uv
-uv add lineage-sdk
+uv add "lineage-sdk @ git+https://github.com/vkrishna03/Lineage.git#subdirectory=sdks/python"
 ```
 
 ### Simple API
@@ -66,8 +68,13 @@ actor = client.actors.create(type=ActorType.LLM, name="My LLM")
 
 ### Installation
 
+Not published to npm. Build it from this repo:
+
 ```bash
-npm install lineage-sdk
+git clone https://github.com/vkrishna03/Lineage.git
+cd Lineage/sdks/typescript && npm install && npm run build
+# then, in your app
+npm install /path/to/Lineage/sdks/typescript
 ```
 
 ### Simple API

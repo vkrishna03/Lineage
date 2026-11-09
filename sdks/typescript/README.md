@@ -4,12 +4,13 @@ Epistemic transparency for AI systems - track decisions, suggestions, and action
 
 ## Installation
 
+Not published to npm. Build it from this repo:
+
 ```bash
-npm install lineage-sdk
-# or
-pnpm add lineage-sdk
-# or
-yarn add lineage-sdk
+git clone https://github.com/vkrishna03/Lineage.git
+cd Lineage/sdks/typescript && npm install && npm run build
+# then, in your app
+npm install /path/to/Lineage/sdks/typescript
 ```
 
 ## Quick Start
@@ -203,4 +204,4 @@ npm test
 
 ## License
 
-Elastic-2.0
+AGPL-3.0

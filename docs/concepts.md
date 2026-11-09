@@ -18,7 +18,7 @@ This creates accountability and auditability for both human and AI decision-maki
 
 ### Scopes
 
-A scope defines the boundary for an event chain. Events within a scope form a causally-ordered sequence with hash-chaining for integrity.
+A scope defines the boundary for an event chain. Events within a scope form a causally-ordered sequence and each event stores the previous event's hash (see Hash Chaining below for its limits).
 
 Examples:
 - A loan application review
@@ -108,10 +108,10 @@ Corrections maintain full history - the original event is never deleted.
 
 ## Hash Chaining
 
-Events within a scope are hash-chained:
-- Each event contains the hash of the previous event
+Events within a scope are linked by hash:
+- Each event stores the hash of the previous event in its scope (`prev_event_hash`)
 - Event hashes are computed using RFC 8785 (canonical JSON)
-- This creates a tamper-evident audit trail
+- The event hash does not yet include `prev_event_hash`, so the link is a stored pointer, not a cryptographic chain. A tamper-evident trail needs that field in the hash plus a verify step; neither exists yet.
 
 ## Example Workflow
 

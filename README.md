@@ -1,10 +1,10 @@
 # Lineage
 
-Epistemic Transparency & Event Lineage System — an append-only event store with hash-chaining for tracking AI decisions.
+Epistemic Transparency & Event Lineage System — an append-only event store for tracking AI decisions, with a SHA-256 hash and a sequence number on every event.
 
 ## Features
 
-- **Hash-chained events**: Each event links to the previous via SHA-256 hash (RFC 8785 canonical JSON)
+- **Hashed, sequenced events**: each event gets a SHA-256 hash of its canonical JSON (RFC 8785) and stores the previous event's hash in its scope. That hash does not yet cover the link, so the chain is not tamper-evident, and there is no verify endpoint yet.
 - **Epistemic intents**: Track exploration, suggestion, assertion, decision, and execution
 - **Lineage tracking**: Parent/child relationships between events
 - **Corrections**: Supersede, amend, or retract previous events
@@ -13,8 +13,10 @@ Epistemic Transparency & Event Lineage System — an append-only event store wit
 ## Quick Start with SDK
 
 **Python:**
+Not published to PyPI (the `lineage-sdk` name there belongs to an unrelated project). Install from this repo:
+
 ```bash
-pip install lineage-sdk
+pip install "git+https://github.com/vkrishna03/Lineage.git#subdirectory=sdks/python"
 ```
 
 ```python
@@ -25,8 +27,13 @@ lineage.emit("data_ingestion", "assertion", {"data": "loaded"}, confidence=0.99)
 ```
 
 **TypeScript:**
+Not published to npm. Build it from this repo:
+
 ```bash
-npm install lineage-sdk
+git clone https://github.com/vkrishna03/Lineage.git
+cd Lineage/sdks/typescript && npm install && npm run build
+# then, in your app
+npm install /path/to/Lineage/sdks/typescript
 ```
 
 ```typescript
@@ -55,8 +62,8 @@ Visit http://localhost:8080/swagger/index.html for API docs.
 
 | Language | Package | Install |
 |----------|---------|---------|
-| Python | [lineage-sdk](./sdks/python) | `pip install lineage-sdk` |
-| TypeScript | [lineage-sdk](./sdks/typescript) | `npm install lineage-sdk` |
+| Python | [lineage-sdk](./sdks/python) | From this repo (not on PyPI) |
+| TypeScript | [lineage-sdk](./sdks/typescript) | Build from this repo (not on npm) |
 | curl | [Examples](./docs/sdk.md#curl-examples) | Direct HTTP |
 
 ## Examples
@@ -100,4 +107,4 @@ See [docs/architecture.md](./docs/architecture.md) for details.
 
 ## License
 
-[Elastic License 2.0](./LICENSE)
+[GNU AGPL v3.0](./LICENSE)

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Lineage is an append-only event store with hash-chaining for tracking AI decisions and their epistemic context.
+Lineage is an append-only event store for tracking AI decisions and their epistemic context. Each event is hashed and stores the previous event's hash in its scope.
 
 ## Components
 
@@ -35,14 +35,14 @@ Lineage is an append-only event store with hash-chaining for tracking AI decisio
 ### Consumer (`apps/api/cmd/consumer`)
 
 - Consumes events from Kafka
-- Computes hash chains (RFC 8785 canonical JSON)
+- Computes each event's hash (RFC 8785 canonical JSON) and records the previous event's hash
 - Persists events to Postgres
 - Maintains scope sequences
 
 ### Database (Postgres)
 
 - Append-only event storage
-- Hash chain verification
+- Hash verification: not implemented yet
 - Lineage relationships (parent/child events)
 
 ### Message Queue (Kafka)
@@ -58,7 +58,7 @@ Lineage is an append-only event store with hash-chaining for tracking AI decisio
 - **Scope**: Logical grouping (project/domain/environment)
 - **Actor**: Who performed the action (human, LLM, agent, service, tool)
 - **Event Type**: Schema for event payloads
-- **Event**: Immutable record with hash chain
+- **Event**: Immutable record with its own hash and the previous event's hash
 - **Artifact**: Content-addressed data (inputs/outputs)
 - **Score**: Numeric assessments (confidence, relevance, reliability, agreement)
 
@@ -99,6 +99,8 @@ Each event includes:
 - `event_hash`: SHA-256 of canonical JSON (RFC 8785)
 - `prev_event_hash`: Links to previous event in scope
 - `scope_sequence`: Monotonic sequence number within scope
+
+`event_hash` does not include `prev_event_hash` yet, so editing an earlier event would not break later hashes.
 
 ## Directory Structure
 

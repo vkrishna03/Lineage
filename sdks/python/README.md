@@ -4,10 +4,12 @@ Epistemic transparency for AI systems - track decisions, suggestions, and action
 
 ## Installation
 
+Not published to PyPI (the `lineage-sdk` name there belongs to an unrelated project). Install from this repo:
+
 ```bash
-uv add lineage-sdk
+uv add "lineage-sdk @ git+https://github.com/vkrishna03/Lineage.git#subdirectory=sdks/python"
 # or
-pip install lineage-sdk
+pip install "git+https://github.com/vkrishna03/Lineage.git#subdirectory=sdks/python"
 ```
 
 ## Quick Start
@@ -187,4 +189,4 @@ uv run ruff check .
 
 ## License
 
-Elastic-2.0
+AGPL-3.0

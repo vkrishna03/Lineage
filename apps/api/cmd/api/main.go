@@ -19,8 +19,8 @@ import (
 // @contact.name   Lineage Support
 // @contact.url    https://github.com/vkrishna03/Lineage
 
-// @license.name  Elastic License 2.0
-// @license.url   https://www.elastic.co/licensing/elastic-license
+// @license.name  GNU AGPL v3.0
+// @license.url   https://www.gnu.org/licenses/agpl-3.0.html
 
 // @host      localhost:8080
 // @BasePath  /api/v1

@@ -34,7 +34,7 @@
     "langchain"
   ],
   "author": "Lineage Team",
-  "license": "Elastic-2.0",
+  "license": "AGPL-3.0",
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsup": "^8.0.0",
